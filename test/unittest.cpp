@@ -189,6 +189,25 @@ namespace LSC_UnitTest
             }
         }
 
+        TEST_METHOD(DeleteRows)
+        {
+            try
+            {
+                CreateTable();
+                InsertRow();
+
+                LSC_TableDeleteRows(TestTable);
+
+                auto rows = LSC_TableGetRows({ .table = TestTable });
+
+                Assert::IsTrue(rows.empty());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
         TEST_METHOD(GetRow)
         {
             try

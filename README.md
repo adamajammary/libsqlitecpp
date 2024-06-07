@@ -272,6 +272,16 @@ Throws **runtime_error**
 int rowsDeleted = LSC_TableDeleteRow("my_table", { .name = "my_column2", .value = "my value 2" });
 ```
 
+### LSC_TableDeleteRows
+
+Deletes all the rows in the table.
+
+```cpp
+void LSC_TableDeleteRows(const std::string& table);
+```
+
+Throws **runtime_error**
+
 ### LSC_TableGetRow
 
 ```cpp

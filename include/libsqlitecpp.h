@@ -112,6 +112,12 @@ DLLEXPORT void DLL LSC_TableDeleteRow(const std::string& table, int64_t rowId);
 DLLEXPORT int DLL LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column);
 
 /**
+ * Deletes all the rows in the table.
+ * @throws runtime_error
+ */
+DLLEXPORT void DLL LSC_TableDeleteRows(const std::string& table);
+
+/**
  * @brief Selects a row by primary key ID.
  * @throws runtime_error
  */

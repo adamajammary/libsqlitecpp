@@ -68,7 +68,7 @@ void LSC_TableDelete(const std::string& table)
     auto query = TextFormat("DROP TABLE IF EXISTS %s;", table.c_str());
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to delete table '%s'.", table.c_str()));
+        throw std::runtime_error(TextFormat("Failed to drop table '%s'.", table.c_str()));
 }
 
 void LSC_TableDeleteRow(const std::string& table, int64_t rowId)
@@ -116,6 +116,17 @@ int LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column)
     LSC_SQL::Finalize(statement);
 
     return sqlite3_changes(connection);
+}
+
+void LSC_TableDeleteRows(const std::string& table)
+{
+    if (!LSC_SQL::IsValid(table))
+        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+
+    auto query = TextFormat("DELETE FROM %s;", table.c_str());
+
+    if (LSC_SQL::Execute(query) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to truncate table '%s'.", table.c_str()));
 }
 
 LSC_TableRow LSC_TableGetRow(const std::string& table, int64_t rowId)
