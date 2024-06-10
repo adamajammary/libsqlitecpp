@@ -13,14 +13,16 @@ private:
 	static const int maxRetries = 10;
 
 public:
-	static int                       Execute(const std::string& query);
-	static int                       Execute(sqlite3_stmt*  statement);
-	static int                       Finalize(sqlite3_stmt* statement);
-	static sqlite3_stmt*             GetPreparedStatement(const std::string& query);
-	static LSC_TableRow              GetRow(sqlite3_stmt*   statement);
-	static std::vector<LSC_TableRow> GetRows(sqlite3_stmt*  statement);
-	static std::string               GetValue(sqlite3_stmt* statement);
-	static bool                      IsValid(const std::string& value);
+	static int           Execute(const std::string& query);
+	static int           Execute(sqlite3_stmt* statement);
+	static int           Finalize(sqlite3_stmt* statement);
+	static sqlite3_stmt* GetPreparedStatement(const std::string& query);
+	static int           GetResultInt(sqlite3_stmt* statement);
+	static LSC_TableRow  GetRow(sqlite3_stmt* statement);
+	static bool          GetRowExists(sqlite3_stmt* statement);
+	static LSC_TableRows GetRows(sqlite3_stmt* statement);
+	static std::string   GetValue(sqlite3_stmt* statement);
+	static bool          IsValid(const std::string& value);
 
 private:
 	static LSC_TableRow getRow(sqlite3_stmt* statement);

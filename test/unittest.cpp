@@ -279,6 +279,42 @@ namespace LSC_UnitTest
                 Assert::Fail(ToString(e.what()).c_str());
             }
         }
+
+        TEST_METHOD(RowCount)
+        {
+            try
+            {
+                CreateTable();
+                InsertRow();
+
+                auto count = LSC_TableGetRowCount(TestTable);
+
+                Assert::AreEqual(2, (int)count);
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(RowExists)
+        {
+            try
+            {
+                CreateTable();
+                InsertRow();
+
+                auto exists1 = LSC_TableRowExists(TestTable, { .name = "test_column1", .value = "test;value1" });
+                auto exists2 = LSC_TableRowExists(TestTable, { .name = "test_column1", .value = "test;value3" });
+
+                Assert::IsTrue(exists1);
+                Assert::IsFalse(exists2);
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
     };
 }
 

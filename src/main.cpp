@@ -149,7 +149,25 @@ LSC_TableRow LSC_TableGetRow(const std::string& table, int64_t rowId)
     return row;
 }
 
-std::vector<LSC_TableRow> LSC_TableGetRows(const LSC_Query& query)
+size_t LSC_TableGetRowCount(const std::string& table)
+{
+    if (!LSC_SQL::IsValid(table))
+        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+
+    auto select    = TextFormat("SELECT COUNT(*) FROM %s;", table.c_str());
+	auto statement = LSC_SQL::GetPreparedStatement(select);
+
+	if (!statement)
+        throw std::runtime_error("Failed to prepare the statement.");
+
+	auto count = (size_t)LSC_SQL::GetResultInt(statement);
+
+	LSC_SQL::Finalize(statement);
+
+	return count;
+}
+
+LSC_TableRows LSC_TableGetRows(const LSC_Query& query)
 {
     if (!LSC_SQL::IsValid(query.table))
         throw std::runtime_error(TextFormat("Invalid table name '%s'.", query.table.c_str()));
@@ -232,6 +250,29 @@ void LSC_TableInsertRow(const std::string& table, const std::vector<LSC_ColumnVa
         throw std::runtime_error("Failed to execute the statement.");
 
     LSC_SQL::Finalize(statement);
+}
+
+bool LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereColumn)
+{
+    if (!LSC_SQL::IsValid(table))
+        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+
+    if (whereColumn.name.empty() || !LSC_SQL::IsValid(whereColumn.name))
+        throw std::runtime_error(TextFormat("Invalid where column name '%s'.", whereColumn.name.c_str()));
+
+    auto select    = TextFormat("SELECT EXISTS(SELECT 1 FROM %s WHERE %s=?);", table.c_str(), whereColumn.name.c_str());
+	auto statement = LSC_SQL::GetPreparedStatement(select);
+
+	if (!statement)
+        throw std::runtime_error("Failed to prepare the statement.");
+
+    sqlite3_bind_text(statement, 1, whereColumn.value.c_str(), -1, nullptr);
+
+	bool exists = LSC_SQL::GetResultInt(statement);
+
+	LSC_SQL::Finalize(statement);
+
+	return exists;
 }
 
 void LSC_TableUpdateRow(const std::string& table, const std::vector<LSC_ColumnValue>& columns, int64_t rowId)

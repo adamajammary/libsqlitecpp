@@ -296,6 +296,14 @@ Throws **runtime_error**
 LSC_TableRow row = LSC_TableGetRow("my_table", 1);
 ```
 
+### LSC_TableGetRowCount
+
+```cpp
+size_t LSC_TableGetRowCount(const std::string& table);
+```
+
+Throws **runtime_error**
+
 ### LSC_TableGetRows
 
 ```cpp
@@ -341,6 +349,20 @@ columns.push_back({ .name = "my_column1", .value = "my value 1" });
 columns.push_back({ .name = "my_column2", .value = "my value 2" });
 
 LSC_TableInsertRow("my_table", columns);
+```
+
+### LSC_TableRowExists
+
+```cpp
+bool LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereColumn);
+```
+
+Returns true if a row with a matching column value already exists.
+
+Throws **runtime_error**
+
+```cpp
+bool rowExists = LSC_TableRowExists("my_table", { .name = "my_column1", .value = "my value 1" });
 ```
 
 ### LSC_TableUpdateRow

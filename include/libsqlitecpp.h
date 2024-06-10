@@ -23,7 +23,8 @@
 #include <vector>
 #include <unordered_map>
 
-using LSC_TableRow = std::unordered_map<std::string, std::string>;
+using LSC_TableRow  = std::unordered_map<std::string, std::string>;
+using LSC_TableRows = std::vector<LSC_TableRow>;
 
 struct LSC_ColumnDefinition
 {
@@ -126,12 +127,23 @@ DLLEXPORT LSC_TableRow DLL LSC_TableGetRow(const std::string& table, int64_t row
 /**
  * @throws runtime_error
  */
-DLLEXPORT std::vector<LSC_TableRow> DLL LSC_TableGetRows(const LSC_Query& query);
+DLLEXPORT size_t DLL LSC_TableGetRowCount(const std::string& table);
+
+/**
+ * @throws runtime_error
+ */
+DLLEXPORT LSC_TableRows DLL LSC_TableGetRows(const LSC_Query& query);
 
 /**
  * @throws runtime_error
  */
 DLLEXPORT void DLL LSC_TableInsertRow(const std::string& table, const std::vector<LSC_ColumnValue>& columns);
+
+/**
+ * @returns true if a row with a matching column value already exists
+ * @throws runtime_error
+ */
+DLLEXPORT bool DLL LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereColumn);
 
 /**
  * @throws runtime_error

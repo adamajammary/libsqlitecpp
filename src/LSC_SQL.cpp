@@ -82,6 +82,29 @@ sqlite3_stmt* LSC_SQL::GetPreparedStatement(const std::string& query)
 	return statement;
 }
 
+int LSC_SQL::GetResultInt(sqlite3_stmt* statement)
+{
+	int result;
+
+	for (auto i = 0; i < LSC_SQL::maxRetries; i++)
+	{
+		result = sqlite3_step(statement);
+	
+		if (result == SQLITE_ROW)
+			return sqlite3_column_int(statement, 0);
+
+		if ((result != SQLITE_BUSY) && (result != SQLITE_LOCKED))
+			break;
+	}
+
+	#if defined _DEBUG
+	if ((result != SQLITE_DONE) && (result != SQLITE_OK))
+		printf("%d: %s\n", result, sqlite3_errstr(result));
+	#endif
+
+	return 0;
+}
+
 LSC_TableRow LSC_SQL::getRow(sqlite3_stmt* statement)
 {
 	LSC_TableRow row;
@@ -121,10 +144,33 @@ LSC_TableRow LSC_SQL::GetRow(sqlite3_stmt* statement)
 	return {};
 }
 
-std::vector<LSC_TableRow> LSC_SQL::GetRows(sqlite3_stmt* statement)
+bool LSC_SQL::GetRowExists(sqlite3_stmt* statement)
 {
 	int result;
-	std::vector<LSC_TableRow> rows;
+
+	for (auto i = 0; i < LSC_SQL::maxRetries; i++)
+	{
+		result = sqlite3_step(statement);
+	
+		if (result == SQLITE_ROW)
+			return (sqlite3_column_int(statement, 0) == 1);
+
+		if ((result != SQLITE_BUSY) && (result != SQLITE_LOCKED))
+			break;
+	}
+
+	#if defined _DEBUG
+	if ((result != SQLITE_DONE) && (result != SQLITE_OK))
+		printf("%d: %s\n", result, sqlite3_errstr(result));
+	#endif
+
+	return false;
+}
+
+LSC_TableRows LSC_SQL::GetRows(sqlite3_stmt* statement)
+{
+	int           result;
+	LSC_TableRows rows;
 
 	for (auto i = 0; i < LSC_SQL::maxRetries; i++)
 	{
