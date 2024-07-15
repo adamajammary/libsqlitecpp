@@ -8,7 +8,7 @@ SQLite C++ Library
 
 Library | Version | License
 ------- | ------- | -------
-[SQLite](https://www.sqlite.org/) | [3.45.3](https://www.sqlite.org/2024/sqlite-autoconf-3450300.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
+[SQLite](https://www.sqlite.org/) | [3.46.0](https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
 
 ## Platform-dependent Include Headers
 
@@ -27,6 +27,8 @@ GCC | 13
 MSVC | 2019
 
 ## How to build
+
+SQLite must be built with [FTS5](https://sqlite.org/fts5.html#building_fts5_as_part_of_sqlite) support.
 
 1. Build the [third-party libraries](#3rd-party-libraries) and place the them in a common directory.
 1. Make sure you have [cmake](https://cmake.org/download/) installed.
@@ -149,6 +151,8 @@ struct LSC_Query
     std::vector<std::string> selectColumns;
 
     LSC_ColumnValue whereColumn;
+
+    std::string search = "";
 
     LSC_ColumnOrderBy orderByColumn;
 

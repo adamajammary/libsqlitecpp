@@ -58,6 +58,8 @@ struct LSC_Query
 
     LSC_ColumnValue whereColumn;
 
+    std::string search = "";
+
     LSC_ColumnOrderBy orderByColumn;
 
     int limit  = 100;

@@ -40,6 +40,8 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
     if (!LSC_SQL::IsValid(table))
         throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
 
+    std::vector<std::string> searchColumns;
+
     auto query = TextFormat("CREATE TABLE IF NOT EXISTS %s (id INTEGER PRIMARY KEY", table.c_str());
 
     for (const auto& column : columns)
@@ -47,17 +49,42 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
         if (!LSC_SQL::IsValid(column.name))
             throw std::runtime_error(TextFormat("Invalid column name '%s'.", column.name.c_str()));
 
-        auto notNull = (column.isNotNull    ? " NOT NULL"       : "");
-        auto search  = (column.isSearchable ? " COLLATE NOCASE" : "");
-        auto unique  = (column.isUnique     ? " UNIQUE"         : "");
+        auto notNull = (column.isNotNull ? " NOT NULL" : "");
+        auto unique  = (column.isUnique  ? " UNIQUE"   : "");
 
-        query.append(TextFormat(", %s TEXT%s%s%s", column.name.c_str(), unique, search, notNull));
+        query.append(TextFormat(", %s TEXT COLLATE NOCASE %s %s", column.name.c_str(), unique, notNull));
+
+        if (column.isSearchable)
+            searchColumns.push_back(column.name);
     }
     
     query.append(");");
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to create table '%s'.", table.c_str()));
+
+    if (searchColumns.empty())
+        return;
+
+    auto queryFTS = LSC_SQL::GetQueryFTS(table, searchColumns);
+
+    if (LSC_SQL::Execute(queryFTS) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to create a virtual FTS table for '%s'.", table.c_str()));
+
+    auto queryTriggerInsert = LSC_SQL::GetQueryTriggerInsert(table, searchColumns);
+
+    if (LSC_SQL::Execute(queryTriggerInsert) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to create an insert trigger for '%s'.", table.c_str()));
+
+    auto queryTriggerDelete = LSC_SQL::GetQueryTriggerDelete(table, searchColumns);
+
+    if (LSC_SQL::Execute(queryTriggerDelete) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to create a delete trigger for '%s'.", table.c_str()));
+
+    auto queryTriggerUpdate = LSC_SQL::GetQueryTriggerUpdate(table, searchColumns);
+
+    if (LSC_SQL::Execute(queryTriggerUpdate) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to create an update trigger for '%s'.", table.c_str()));
 }
 
 void LSC_TableDelete(const std::string& table)
@@ -69,6 +96,26 @@ void LSC_TableDelete(const std::string& table)
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to drop table '%s'.", table.c_str()));
+
+    auto queryFTS = TextFormat("DROP TABLE IF EXISTS %s_fts;", table.c_str());
+
+    if (LSC_SQL::Execute(queryFTS) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to drop virtual FTS table for '%s'.", table.c_str()));
+
+    auto queryTriggerInsert = TextFormat("DROP TRIGGER IF EXISTS %s_fts_insert;", table.c_str());
+
+    if (LSC_SQL::Execute(queryTriggerInsert) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to drop insert trigger for '%s'.", table.c_str()));
+
+    auto queryTriggerDelete = TextFormat("DROP TRIGGER IF EXISTS %s_fts_delete;", table.c_str());
+
+    if (LSC_SQL::Execute(queryTriggerDelete) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to drop delete trigger for '%s'.", table.c_str()));
+
+    auto queryTriggerUpdate = TextFormat("DROP TRIGGER IF EXISTS %s_fts_update;", table.c_str());
+
+    if (LSC_SQL::Execute(queryTriggerUpdate) != SQLITE_OK)
+        throw std::runtime_error(TextFormat("Failed to drop update trigger for '%s'.", table.c_str()));
 }
 
 void LSC_TableDeleteRow(const std::string& table, int64_t rowId)
@@ -193,24 +240,38 @@ LSC_TableRows LSC_TableGetRows(const LSC_Query& query)
         selectColumns.append(query.selectColumns[i]).append(i < (query.selectColumns.size() - 1) ? ", " : "");
     }
 
-    auto distinct  = (query.isDistinct ? "DISTINCT " : "");
-    auto columns   = (hasSelectColumns ? selectColumns.c_str() : "*");
-    auto filter    = (hasWhere   ? TextFormat(" WHERE %s=?", query.whereColumn.name.c_str()) : "");
-    auto orderBy   = (hasOrderBy ? TextFormat(" ORDER BY %s %s", query.orderByColumn.name.c_str(), (query.orderByColumn.isDescending ? "DESC" : "ASC")) : "");
-    auto select    = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns, query.table.c_str(), filter.c_str(), orderBy.c_str(), query.limit, query.offset);
-	auto statement = LSC_SQL::GetPreparedStatement(select);
+    std::string filter = "";
 
-	if (!statement)
+    if (!query.search.empty())
+        filter = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
+    else if (hasWhere)
+        filter = TextFormat(" WHERE %s=?", query.whereColumn.name.c_str());
+
+    auto distinct = (query.isDistinct ? "DISTINCT " : "");
+    auto columns  = (hasSelectColumns ? selectColumns.c_str() : "*");
+    auto orderBy  = (hasOrderBy ? TextFormat(" ORDER BY %s %s", query.orderByColumn.name.c_str(), (query.orderByColumn.isDescending ? "DESC" : "ASC")) : "");
+    auto table    = (!query.search.empty() ? TextFormat("%s_fts", query.table.c_str()) : query.table);
+
+    auto select = TextFormat(
+        "SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;",
+        distinct, columns, table.c_str(), filter.c_str(), orderBy.c_str(), query.limit, query.offset
+    );
+
+    auto statement = LSC_SQL::GetPreparedStatement(select);
+
+    if (!statement)
         throw std::runtime_error("Failed to prepare the statement.");
 
-    if (hasWhere)
-        sqlite3_bind_text(statement, 1, query.whereColumn.value.c_str(), -1, nullptr);
+    auto paramValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : (hasWhere ? query.whereColumn.value : ""));
 
-	auto rows = LSC_SQL::GetRows(statement);
+    if (!paramValue.empty())
+        sqlite3_bind_text(statement, 1, paramValue.c_str(), -1, nullptr);
 
-	LSC_SQL::Finalize(statement);
+    auto rows = LSC_SQL::GetRows(statement);
 
-	return rows;
+    LSC_SQL::Finalize(statement);
+
+    return rows;
 }
 
 void LSC_TableInsertRow(const std::string& table, const std::vector<LSC_ColumnValue>& columns)

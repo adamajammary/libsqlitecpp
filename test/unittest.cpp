@@ -34,7 +34,7 @@ namespace LSC_UnitTest
         LSC_CloseDatabase();
     }
 
-	TEST_CLASS(GetSet)
+	TEST_CLASS(Settings)
 	{
         TEST_METHOD(Set)
         {
@@ -251,7 +251,7 @@ namespace LSC_UnitTest
             }
         }
 
-        TEST_METHOD(GetRows)
+        TEST_METHOD(GetRowsWhere)
         {
             try
             {
@@ -263,6 +263,35 @@ namespace LSC_UnitTest
                     .isDistinct    = true,
                     .selectColumns = { "test_column2" },
                     .whereColumn   = { .name = "test_column2", .value = "test;value2A" },
+                    .orderByColumn = { .name = "test_column2", .isDescending = true },
+                    .limit         = 1,
+                    .offset        = 0
+                };
+
+                auto rows = LSC_TableGetRows(query);
+
+                Assert::AreEqual(1, (int)rows.size());
+
+                Assert::AreEqual("test;value2A", rows[0]["test_column2"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(GetRowsSearch)
+        {
+            try
+            {
+                CreateTable();
+                InsertRow();
+
+                LSC_Query query = {
+                    .table         = TestTable,
+                    .isDistinct    = true,
+                    .selectColumns = { "test_column2" },
+                    .search        = "value2",
                     .orderByColumn = { .name = "test_column2", .isDescending = true },
                     .limit         = 1,
                     .offset        = 0
