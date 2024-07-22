@@ -82,7 +82,7 @@ sqlite3_stmt* LSC_SQL::GetPreparedStatement(const std::string& query)
 	return statement;
 }
 
-std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<std::string>& columns)
+std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
 	auto query = TextFormat(
 		"CREATE VIRTUAL TABLE IF NOT EXISTS %s_fts USING FTS5 (content=%s, content_rowid=id",
@@ -90,14 +90,14 @@ std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<std
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.c_str()));
+		query.append(TextFormat(", %s", column.name.c_str()));
 
 	query.append(");");
 
 	return query;
 }
 
-std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::vector<std::string>& columns)
+std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
 	auto query = TextFormat(
 		"CREATE TRIGGER IF NOT EXISTS %s_fts_delete AFTER DELETE ON %s BEGIN INSERT INTO %s_fts (%s_fts, rowid",
@@ -105,19 +105,19 @@ std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.c_str()));
+		query.append(TextFormat(", %s", column.name.c_str()));
 
 	query.append(") VALUES ('delete', OLD.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", OLD.%s", column.c_str()));
+		query.append(TextFormat(", OLD.%s", column.name.c_str()));
 
 	query.append("); END;");
 
 	return query;
 }
 
-std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::vector<std::string>& columns)
+std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
 	auto query = TextFormat(
 		"CREATE TRIGGER IF NOT EXISTS %s_fts_insert AFTER INSERT ON %s BEGIN INSERT INTO %s_fts (rowid",
@@ -125,19 +125,19 @@ std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.c_str()));
+		query.append(TextFormat(", %s", column.name.c_str()));
 
 	query.append(") VALUES (NEW.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", NEW.%s", column.c_str()));
+		query.append(TextFormat(", NEW.%s", column.name.c_str()));
 
 	query.append("); END;");
 
 	return query;
 }
 
-std::string LSC_SQL::GetQueryTriggerUpdate(const std::string& table, const std::vector<std::string>& columns)
+std::string LSC_SQL::GetQueryTriggerUpdate(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
 	auto query = TextFormat(
 		"CREATE TRIGGER IF NOT EXISTS %s_fts_update AFTER UPDATE ON %s BEGIN INSERT INTO %s_fts (%s_fts, rowid",
@@ -145,22 +145,22 @@ std::string LSC_SQL::GetQueryTriggerUpdate(const std::string& table, const std::
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.c_str()));
+		query.append(TextFormat(", %s", column.name.c_str()));
 
 	query.append(") VALUES ('delete', OLD.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", OLD.%s", column.c_str()));
+		query.append(TextFormat(", OLD.%s", column.name.c_str()));
 
 	query.append(TextFormat("); INSERT INTO %s_fts (rowid", table.c_str()));
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.c_str()));
+		query.append(TextFormat(", %s", column.name.c_str()));
 
 	query.append(") VALUES (NEW.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", NEW.%s", column.c_str()));
+		query.append(TextFormat(", NEW.%s", column.name.c_str()));
 
 	query.append("); END;");
 

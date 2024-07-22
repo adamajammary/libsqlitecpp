@@ -17,10 +17,10 @@ public:
 	static int           Execute(sqlite3_stmt* statement);
 	static int           Finalize(sqlite3_stmt* statement);
 	static sqlite3_stmt* GetPreparedStatement(const std::string& query);
-	static std::string   GetQueryFTS(const std::string& table, const std::vector<std::string>& columns);
-	static std::string   GetQueryTriggerDelete(const std::string& table, const std::vector<std::string>& columns);
-	static std::string   GetQueryTriggerInsert(const std::string& table, const std::vector<std::string>& columns);
-	static std::string   GetQueryTriggerUpdate(const std::string& table, const std::vector<std::string>& columns);
+	static std::string   GetQueryFTS(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns);
+	static std::string   GetQueryTriggerDelete(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns);
+	static std::string   GetQueryTriggerInsert(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns);
+	static std::string   GetQueryTriggerUpdate(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns);
 	static int           GetResultInt(sqlite3_stmt* statement);
 	static LSC_TableRow  GetRow(sqlite3_stmt* statement);
 	static bool          GetRowExists(sqlite3_stmt* statement);

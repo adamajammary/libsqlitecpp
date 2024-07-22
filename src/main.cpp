@@ -40,7 +40,7 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
     if (!LSC_SQL::IsValid(table))
         throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
 
-    std::vector<std::string> searchColumns;
+    bool isSearchable = false;
 
     auto query = TextFormat("CREATE TABLE IF NOT EXISTS %s (id INTEGER PRIMARY KEY", table.c_str());
 
@@ -55,7 +55,7 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
         query.append(TextFormat(", %s TEXT COLLATE NOCASE %s %s", column.name.c_str(), unique, notNull));
 
         if (column.isSearchable)
-            searchColumns.push_back(column.name);
+            isSearchable = true;
     }
     
     query.append(");");
@@ -63,25 +63,25 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
     if (LSC_SQL::Execute(query) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to create table '%s'.", table.c_str()));
 
-    if (searchColumns.empty())
+    if (!isSearchable)
         return;
 
-    auto queryFTS = LSC_SQL::GetQueryFTS(table, searchColumns);
+    auto queryFTS = LSC_SQL::GetQueryFTS(table, columns);
 
     if (LSC_SQL::Execute(queryFTS) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to create a virtual FTS table for '%s'.", table.c_str()));
 
-    auto queryTriggerInsert = LSC_SQL::GetQueryTriggerInsert(table, searchColumns);
+    auto queryTriggerInsert = LSC_SQL::GetQueryTriggerInsert(table, columns);
 
     if (LSC_SQL::Execute(queryTriggerInsert) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to create an insert trigger for '%s'.", table.c_str()));
 
-    auto queryTriggerDelete = LSC_SQL::GetQueryTriggerDelete(table, searchColumns);
+    auto queryTriggerDelete = LSC_SQL::GetQueryTriggerDelete(table, columns);
 
     if (LSC_SQL::Execute(queryTriggerDelete) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to create a delete trigger for '%s'.", table.c_str()));
 
-    auto queryTriggerUpdate = LSC_SQL::GetQueryTriggerUpdate(table, searchColumns);
+    auto queryTriggerUpdate = LSC_SQL::GetQueryTriggerUpdate(table, columns);
 
     if (LSC_SQL::Execute(queryTriggerUpdate) != SQLITE_OK)
         throw std::runtime_error(TextFormat("Failed to create an update trigger for '%s'.", table.c_str()));
