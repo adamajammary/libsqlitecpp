@@ -23,7 +23,7 @@ libsqlitecpp uses modern [C++20](https://en.cppreference.com/w/cpp/compiler_supp
 Compiler | Version
 -------- | -------
 CLANG | 14
-GCC | 13
+GCC | 11.4
 MSVC | 2019
 
 ## How to build
@@ -47,11 +47,12 @@ Make sure you have [Android NDK](https://developer.android.com/ndk/downloads) in
 
 ```bash
 cmake .. -G "Unix Makefiles" \
+-D ANDROID_ABI="arm64-v8a" \
+-D ANDROID_NDK="/path/to/ANDROID_NDK" \
+-D ANDROID_PLATFORM="android-29" \
+-D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_SYSTEM_NAME="Android" \
 -D CMAKE_TOOLCHAIN_FILE="/path/to/ANDROID_NDK/build/cmake/android.toolchain.cmake" \
--D ANDROID_NDK="/path/to/ANDROID_NDK" \
--D ANDROID_ABI="arm64-v8a" \
--D ANDROID_PLATFORM="android-29" \
 -D EXT_LIB_DIR="/path/to/libs"
 
 make
@@ -63,14 +64,15 @@ You can get the iOS SDK path with the following command: `xcrun --sdk iphoneos -
 
 ```bash
 /Applications/CMake.app/Contents/bin/cmake .. -G "Xcode" \
--D CMAKE_SYSTEM_NAME="iOS" \
+-D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_OSX_ARCHITECTURES="arm64" \
--D CMAKE_OSX_DEPLOYMENT_TARGET="12.5" \
+-D CMAKE_OSX_DEPLOYMENT_TARGET="14.0" \
 -D CMAKE_OSX_SYSROOT="/path/to/IOS_SDK" \
--D IOS_SDK="iphoneos" \
--D EXT_LIB_DIR="/path/to/libs"
+-D CMAKE_SYSTEM_NAME="iOS" \
+-D EXT_LIB_DIR="/path/to/libs" \
+-D IOS_SDK="iphoneos"
 
-xcodebuild IPHONEOS_DEPLOYMENT_TARGET="12.5" -project sqlitecpp.xcodeproj -configuration Release
+xcodebuild IPHONEOS_DEPLOYMENT_TARGET="14.0" -project sqlitecpp.xcodeproj -configuration Release
 ```
 
 ### macOS
@@ -79,6 +81,7 @@ You can get the macOS SDK path with the following command: `xcrun --sdk macosx -
 
 ```bash
 /Applications/CMake.app/Contents/bin/cmake .. -G "Xcode" \
+-D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_OSX_ARCHITECTURES="x86_64" \
 -D CMAKE_OSX_DEPLOYMENT_TARGET="12.6" \
 -D CMAKE_OSX_SYSROOT="/path/to/MACOSX_SDK" \
@@ -90,7 +93,9 @@ xcodebuild MACOSX_DEPLOYMENT_TARGET="12.6" -project sqlitecpp.xcodeproj -configu
 ### Linux
 
 ```bash
-cmake .. -G "Unix Makefiles" -D EXT_LIB_DIR="/path/to/libs"
+cmake .. -G "Unix Makefiles" \
+-D CMAKE_BUILD_TYPE=Release \
+-D EXT_LIB_DIR="/path/to/libs"
 
 make
 ```
@@ -98,7 +103,9 @@ make
 ### Windows
 
 ```bash
-cmake .. -G "Visual Studio 17 2022" -D EXT_LIB_DIR="/path/to/libs"
+cmake .. -G "Visual Studio 17 2022" \
+-D CMAKE_BUILD_TYPE=Release \
+-D EXT_LIB_DIR="/path/to/libs"
 
 devenv.com sqlitecpp.sln -build "Release|x64"
 ```
