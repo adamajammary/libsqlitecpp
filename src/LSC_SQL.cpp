@@ -15,7 +15,7 @@ int LSC_SQL::Execute(const std::string& query)
 
 	#if defined _DEBUG
 	if (result != SQLITE_OK)
-		printf("%d: %s\n", result, sqlite3_errstr(result));
+		printf("%d: %s | %s\n", result, sqlite3_errstr(result), query.c_str());
 	#endif
 
 	return result;
@@ -68,11 +68,11 @@ sqlite3_stmt* LSC_SQL::GetPreparedStatement(const std::string& query)
 
 	for (auto i = 0; i < LSC_SQL::maxRetries; i++)
 	{
-		auto result = sqlite3_prepare(connection, query.c_str(), -1, &statement, nullptr);
+		auto result = sqlite3_prepare_v2(connection, query.c_str(), -1, &statement, nullptr);
 
 		#if defined _DEBUG
 		if (result != SQLITE_OK)
-			printf("%d: %s\n", result, sqlite3_errstr(result));
+			printf("%d: %s | %s\n", result, sqlite3_errstr(result), query.c_str());
 		#endif
 
 		if ((result != SQLITE_BUSY) && (result != SQLITE_LOCKED))
@@ -200,7 +200,7 @@ LSC_TableRow LSC_SQL::getRow(sqlite3_stmt* statement)
 		auto value = reinterpret_cast<const char*>(sqlite3_column_text(statement, i));
 
 		if (name)
-			row[name] = (value ? value : "");
+			row[!std::strcmp(name, "rowid") ? "id" : name] = (value ? value : "");
 	}
 
 	return row;

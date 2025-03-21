@@ -291,6 +291,7 @@ namespace LSC_UnitTest
                     .table         = TestTable,
                     .isDistinct    = true,
                     .selectColumns = { "test_column2" },
+                    .whereColumn   = { .name = "test_column2", .value = "test;value2A" },
                     .search        = "value2",
                     .orderByColumn = { .name = "test_column2", .isDescending = true },
                     .limit         = 1,

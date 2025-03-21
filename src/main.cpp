@@ -237,12 +237,20 @@ LSC_TableRows LSC_TableGetRows(const LSC_Query& query)
         if (!LSC_SQL::IsValid(query.selectColumns[i]))
             throw std::runtime_error(TextFormat("Invalid column name '%s'.", query.selectColumns[i].c_str()));
 
-        selectColumns.append(query.selectColumns[i]).append(i < (query.selectColumns.size() - 1) ? ", " : "");
+        if (!query.search.empty() && (query.selectColumns[i] == "id"))
+            selectColumns.append("rowid");
+        else
+            selectColumns.append(query.selectColumns[i]);
+
+        if (i < (query.selectColumns.size() - 1))
+            selectColumns.append(", ");
     }
 
     std::string filter = "";
 
-    if (!query.search.empty())
+    if (!query.search.empty() && hasWhere)
+        filter = TextFormat(" WHERE %s_fts MATCH ? AND %s=?", query.table.c_str(), query.whereColumn.name.c_str());
+    else if (!query.search.empty())
         filter = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
     else if (hasWhere)
         filter = TextFormat(" WHERE %s=?", query.whereColumn.name.c_str());
@@ -262,10 +270,13 @@ LSC_TableRows LSC_TableGetRows(const LSC_Query& query)
     if (!statement)
         throw std::runtime_error("Failed to prepare the statement.");
 
-    auto paramValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : (hasWhere ? query.whereColumn.value : ""));
+    auto searchValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : "");
 
-    if (!paramValue.empty())
-        sqlite3_bind_text(statement, 1, paramValue.c_str(), -1, nullptr);
+    if (!searchValue.empty())
+        sqlite3_bind_text(statement, 1, searchValue.c_str(), -1, nullptr);
+
+    if (hasWhere)
+        sqlite3_bind_text(statement, (!query.search.empty() ? 2 : 1), query.whereColumn.value.c_str(), -1, nullptr);
 
     auto rows = LSC_SQL::GetRows(statement);
 
