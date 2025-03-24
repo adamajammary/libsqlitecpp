@@ -127,9 +127,16 @@ DLLEXPORT void DLL LSC_TableDeleteRows(const std::string& table);
 DLLEXPORT LSC_TableRow DLL LSC_TableGetRow(const std::string& table, int64_t rowId);
 
 /**
+ * @returns the number of rows in the table
  * @throws runtime_error
  */
 DLLEXPORT size_t DLL LSC_TableGetRowCount(const std::string& table);
+
+/**
+ * @returns the number of rows the query would return
+ * @throws runtime_error
+ */
+DLLEXPORT size_t DLL LSC_TableGetRowCount(const LSC_Query& query);
 
 /**
  * @throws runtime_error

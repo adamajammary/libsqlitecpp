@@ -307,11 +307,23 @@ Throws **runtime_error**
 LSC_TableRow row = LSC_TableGetRow("my_table", 1);
 ```
 
-### LSC_TableGetRowCount
+### LSC_TableGetRowCount (table)
 
 ```cpp
 size_t LSC_TableGetRowCount(const std::string& table);
 ```
+
+Returns the number of rows in the table.
+
+Throws **runtime_error**
+
+### LSC_TableGetRowCount (query)
+
+```cpp
+size_t LSC_TableGetRowCount(const LSC_Query& query);
+```
+
+Returns the number of rows the query would return.
 
 Throws **runtime_error**
 

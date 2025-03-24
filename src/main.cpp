@@ -214,69 +214,33 @@ size_t LSC_TableGetRowCount(const std::string& table)
 	return count;
 }
 
+size_t LSC_TableGetRowCount(const LSC_Query& query)
+{
+    auto querySelect = LSC_SQL::GetSelect(query, true);
+    auto select      = TextFormat("SELECT COUNT(*) FROM (%s);", querySelect.c_str());
+    auto statement   = LSC_SQL::GetPreparedStatement(select);
+
+    if (!statement)
+        throw std::runtime_error("Failed to prepare the statement.");
+
+    LSC_SQL::Bind(query, statement);
+
+    auto count = (size_t)LSC_SQL::GetResultInt(statement);
+
+    LSC_SQL::Finalize(statement);
+
+    return count;
+}
+
 LSC_TableRows LSC_TableGetRows(const LSC_Query& query)
 {
-    if (!LSC_SQL::IsValid(query.table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", query.table.c_str()));
-
-    bool hasOrderBy = !query.orderByColumn.name.empty();
-
-    if (hasOrderBy && !LSC_SQL::IsValid(query.orderByColumn.name))
-        throw std::runtime_error(TextFormat("Invalid orderBy column name '%s'.", query.orderByColumn.name.c_str()));
-
-    bool hasWhere = !query.whereColumn.name.empty();
-
-    if (hasWhere && !LSC_SQL::IsValid(query.whereColumn.name))
-        throw std::runtime_error(TextFormat("Invalid where column name '%s'.", query.whereColumn.name.c_str()));
-
-    bool        hasSelectColumns = !query.selectColumns.empty();
-    std::string selectColumns    = "";
-
-    for (size_t i = 0; i < query.selectColumns.size(); i++)
-    {
-        if (!LSC_SQL::IsValid(query.selectColumns[i]))
-            throw std::runtime_error(TextFormat("Invalid column name '%s'.", query.selectColumns[i].c_str()));
-
-        if (!query.search.empty() && (query.selectColumns[i] == "id"))
-            selectColumns.append("rowid");
-        else
-            selectColumns.append(query.selectColumns[i]);
-
-        if (i < (query.selectColumns.size() - 1))
-            selectColumns.append(", ");
-    }
-
-    std::string filter = "";
-
-    if (!query.search.empty() && hasWhere)
-        filter = TextFormat(" WHERE %s_fts MATCH ? AND %s=?", query.table.c_str(), query.whereColumn.name.c_str());
-    else if (!query.search.empty())
-        filter = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
-    else if (hasWhere)
-        filter = TextFormat(" WHERE %s=?", query.whereColumn.name.c_str());
-
-    auto distinct = (query.isDistinct ? "DISTINCT " : "");
-    auto columns  = (hasSelectColumns ? selectColumns.c_str() : "*");
-    auto orderBy  = (hasOrderBy ? TextFormat(" ORDER BY %s %s", query.orderByColumn.name.c_str(), (query.orderByColumn.isDescending ? "DESC" : "ASC")) : "");
-    auto table    = (!query.search.empty() ? TextFormat("%s_fts", query.table.c_str()) : query.table);
-
-    auto select = TextFormat(
-        "SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;",
-        distinct, columns, table.c_str(), filter.c_str(), orderBy.c_str(), query.limit, query.offset
-    );
-
+    auto select    = LSC_SQL::GetSelect(query);
     auto statement = LSC_SQL::GetPreparedStatement(select);
 
     if (!statement)
         throw std::runtime_error("Failed to prepare the statement.");
 
-    auto searchValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : "");
-
-    if (!searchValue.empty())
-        sqlite3_bind_text(statement, 1, searchValue.c_str(), -1, nullptr);
-
-    if (hasWhere)
-        sqlite3_bind_text(statement, (!query.search.empty() ? 2 : 1), query.whereColumn.value.c_str(), -1, nullptr);
+    LSC_SQL::Bind(query, statement);
 
     auto rows = LSC_SQL::GetRows(statement);
 

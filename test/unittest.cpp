@@ -121,7 +121,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 std::vector<LSC_ColumnValue> columns;
@@ -157,7 +156,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 LSC_TableDeleteRow(TestTable, 1);
@@ -176,7 +174,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 auto rowsDeleted = LSC_TableDeleteRow(TestTable, { .name = "test_column1", .value = "test;value1" });
@@ -193,7 +190,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 LSC_TableDeleteRows(TestTable);
@@ -212,7 +208,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 auto row1 = LSC_TableGetRow(TestTable, 1);
@@ -235,7 +230,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 auto rows = LSC_TableGetRows({ .table = TestTable });
@@ -255,7 +249,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 LSC_Query query = {
@@ -284,7 +277,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 LSC_Query query = {
@@ -314,12 +306,21 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
-                auto count = LSC_TableGetRowCount(TestTable);
+                auto tableCount = LSC_TableGetRowCount(TestTable);
 
-                Assert::AreEqual(2, (int)count);
+                Assert::AreEqual(2, (int)tableCount);
+
+                LSC_Query query = {
+                    .table         = TestTable,
+                    .selectColumns = { "test_column2" },
+                    .whereColumn   = { .name = "test_column2", .value = "test;value2A" }
+                };
+
+                auto queryCount = LSC_TableGetRowCount(query);
+
+                Assert::AreEqual(1, (int)queryCount);
             }
             catch (const std::exception& e)
             {
@@ -331,7 +332,6 @@ namespace LSC_UnitTest
         {
             try
             {
-                CreateTable();
                 InsertRow();
 
                 auto exists1 = LSC_TableRowExists(TestTable, { .name = "test_column1", .value = "test;value1" });
