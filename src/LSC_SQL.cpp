@@ -1,5 +1,20 @@
 #include "LSC_SQL.h"
 
+void LSC_SQL::Bind(const LSC_ColumnValue& column, int position, sqlite3_stmt* statement)
+{
+	switch (column.type) {
+	case LSC_DATA_TYPE_FLOAT:
+		sqlite3_bind_double(statement, position, std::atof(column.value.c_str()));
+		break;
+	case LSC_DATA_TYPE_INTEGER:
+		sqlite3_bind_int64(statement, position, std::atoll(column.value.c_str()));
+		break;
+	default:
+		sqlite3_bind_text(statement, position, column.value.c_str(), -1, nullptr);
+		break;
+	}
+}
+
 void LSC_SQL::Bind(const LSC_Query& query, sqlite3_stmt* statement)
 {
 	auto searchValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : "");
@@ -8,7 +23,7 @@ void LSC_SQL::Bind(const LSC_Query& query, sqlite3_stmt* statement)
 		sqlite3_bind_text(statement, 1, searchValue.c_str(), -1, SQLITE_TRANSIENT);
 
 	if (!query.whereColumn.name.empty())
-		sqlite3_bind_text(statement, (!query.search.empty() ? 2 : 1), query.whereColumn.value.c_str(), -1, nullptr);
+		LSC_SQL::Bind(query.whereColumn, (!query.search.empty() ? 2 : 1), statement);
 }
 
 int LSC_SQL::Execute(const std::string& query)

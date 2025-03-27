@@ -26,13 +26,22 @@
 using LSC_TableRow  = std::unordered_map<std::string, std::string>;
 using LSC_TableRows = std::vector<LSC_TableRow>;
 
+enum LSC_DataType
+{
+    LSC_DATA_TYPE_FLOAT,
+    LSC_DATA_TYPE_INTEGER,
+    LSC_DATA_TYPE_TEXT
+};
+
 struct LSC_ColumnDefinition
 {
     std::string name = ""; // Required
 
+    LSC_DataType type = LSC_DATA_TYPE_TEXT;
+
+    bool isUnique     = false;
     bool isNotNull    = false;
     bool isSearchable = false;
-    bool isUnique     = false;
 };
 
 struct LSC_ColumnOrderBy
@@ -45,7 +54,9 @@ struct LSC_ColumnOrderBy
 struct LSC_ColumnValue
 {
     std::string name  = ""; // Required
-    std::string value = ""; // Required
+    std::string value = "";
+
+    LSC_DataType type = LSC_DATA_TYPE_TEXT;
 };
 
 struct LSC_Query
@@ -62,7 +73,7 @@ struct LSC_Query
 
     LSC_ColumnOrderBy orderByColumn;
 
-    int limit  = 100;
+    int limit  = 100000;
     int offset = 0;
 };
 

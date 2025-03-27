@@ -13,6 +13,7 @@ private:
 	static const int maxRetries = 10;
 
 public:
+	static void          Bind(const LSC_ColumnValue& column, int position, sqlite3_stmt* statement);
 	static void          Bind(const LSC_Query& query, sqlite3_stmt* statement);
 	static int           Execute(const std::string& query);
 	static int           Execute(sqlite3_stmt* statement);

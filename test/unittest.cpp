@@ -81,7 +81,9 @@ namespace LSC_UnitTest
                 std::vector<LSC_ColumnDefinition> columns;
 
                 columns.push_back({ .name = "test_column1" });
-                columns.push_back({ .name = "test_column2", .isNotNull = true, .isSearchable = true, .isUnique = true });
+                columns.push_back({ .name = "test_column2", .isUnique = true, .isNotNull = true, .isSearchable = true });
+                columns.push_back({ .name = "test_column_float",   .type = LSC_DATA_TYPE_FLOAT });
+                columns.push_back({ .name = "test_column_integer", .type = LSC_DATA_TYPE_INTEGER });
 
                 LSC_TableCreate(TestTable, columns);
             }
@@ -97,19 +99,23 @@ namespace LSC_UnitTest
             {
                 CreateTable();
 
-                std::vector<LSC_ColumnValue> columns;
+                std::vector<LSC_ColumnValue> row1 = {
+                    { .name = "test_column1", .value = "test;value1" },
+                    { .name = "test_column2", .value = "test;value2" },
+                    { .name = "test_column_float",   .value = "15.1" },
+                    { .name = "test_column_integer", .value = "15" },
+                };
 
-                columns.push_back({ .name = "test_column1", .value = "test;value1" });
-                columns.push_back({ .name = "test_column2", .value = "test;value2" });
+                LSC_TableInsertRow(TestTable, row1);
 
-                LSC_TableInsertRow(TestTable, columns);
+                std::vector<LSC_ColumnValue> row2 = {
+                    {.name = "test_column1", .value = "test;value1" },
+                    {.name = "test_column2", .value = "test;value2A" },
+                    {.name = "test_column_float",   .value = "1.5" },
+                    {.name = "test_column_integer", .value = "1" }
+                };
 
-                columns.clear();
-
-                columns.push_back({ .name = "test_column1", .value = "test;value1" });
-                columns.push_back({ .name = "test_column2", .value = "test;value2A" });
-
-                LSC_TableInsertRow(TestTable, columns);
+                LSC_TableInsertRow(TestTable, row2);
             }
             catch (const std::exception& e)
             {
@@ -140,8 +146,8 @@ namespace LSC_UnitTest
                 auto row1 = LSC_TableGetRow(TestTable, 1);
                 auto row2 = LSC_TableGetRow(TestTable, 2);
 
-                Assert::AreEqual(3, (int)row1.size());
-                Assert::AreEqual(3, (int)row2.size());
+                Assert::AreEqual(5, (int)row1.size());
+                Assert::AreEqual(5, (int)row2.size());
 
                 Assert::AreEqual("new;test;value1",  row1["test_column1"].c_str());
                 Assert::AreEqual("new;test;value2A", row2["test_column2"].c_str());
@@ -210,15 +216,15 @@ namespace LSC_UnitTest
             {
                 InsertRow();
 
-                auto row1 = LSC_TableGetRow(TestTable, 1);
-                auto row2 = LSC_TableGetRow(TestTable, 2);
+                auto row = LSC_TableGetRow(TestTable, 1);
 
-                Assert::AreEqual(3, (int)row1.size());
-                Assert::AreEqual(3, (int)row2.size());
+                Assert::AreEqual(5, (int)row.size());
 
-                Assert::AreEqual("1",            row1["id"].c_str());
-                Assert::AreEqual("test;value1",  row1["test_column1"].c_str());
-                Assert::AreEqual("test;value2A", row2["test_column2"].c_str());
+                Assert::AreEqual("1",           row["id"].c_str());
+                Assert::AreEqual("test;value1", row["test_column1"].c_str());
+                Assert::AreEqual("test;value2", row["test_column2"].c_str());
+                Assert::AreEqual("15",          row["test_column_integer"].c_str());
+                Assert::AreEqual("15.1",        row["test_column_float"].c_str());
             }
             catch (const std::exception& e)
             {
@@ -238,6 +244,20 @@ namespace LSC_UnitTest
 
                 Assert::AreEqual("test;value1",  rows[0]["test_column1"].c_str());
                 Assert::AreEqual("test;value2A", rows[1]["test_column2"].c_str());
+
+                rows = LSC_TableGetRows({ .table = TestTable, .orderByColumn = { .name = "test_column_integer" } });
+
+                Assert::AreEqual(2, (int)rows.size());
+
+                Assert::AreEqual("1",  rows[0]["test_column_integer"].c_str());
+                Assert::AreEqual("15", rows[1]["test_column_integer"].c_str());
+
+                rows = LSC_TableGetRows({ .table = TestTable, .orderByColumn = { .name = "test_column_float" } });
+
+                Assert::AreEqual(2, (int)rows.size());
+
+                Assert::AreEqual("1.5",  rows[0]["test_column_float"].c_str());
+                Assert::AreEqual("15.1", rows[1]["test_column_float"].c_str());
             }
             catch (const std::exception& e)
             {

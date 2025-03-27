@@ -112,16 +112,29 @@ devenv.com sqlitecpp.sln -build "Release|x64"
 
 ## Library
 
+### LSC_DataType
+
+```cpp
+enum LSC_DataType
+{
+  LSC_DATA_TYPE_FLOAT,
+  LSC_DATA_TYPE_INTEGER,
+  LSC_DATA_TYPE_TEXT
+};
+```
+
 ### LSC_ColumnDefinition
 
 ```cpp
 struct LSC_ColumnDefinition
 {
-    std::string name = ""; // Required
+  std::string name = ""; // Required
 
-    bool isNotNull    = false;
-    bool isSearchable = false;
-    bool isUnique     = false;
+  LSC_DataType type = LSC_DATA_TYPE_TEXT;
+
+  bool isUnique     = false;
+  bool isNotNull    = false;
+  bool isSearchable = false;
 };
 ```
 
@@ -130,9 +143,9 @@ struct LSC_ColumnDefinition
 ```cpp
 struct LSC_ColumnOrderBy
 {
-    std::string name = ""; // Required
+  std::string name = ""; // Required
 
-    bool isDescending = false;
+  bool isDescending = false;
 };
 ```
 
@@ -141,8 +154,10 @@ struct LSC_ColumnOrderBy
 ```cpp
 struct LSC_ColumnValue
 {
-    std::string name  = ""; // Required
-    std::string value = ""; // Required
+  std::string name  = ""; // Required
+  std::string value = "";
+
+  LSC_DataType type = LSC_DATA_TYPE_TEXT;
 };
 ```
 
@@ -151,20 +166,20 @@ struct LSC_ColumnValue
 ```cpp
 struct LSC_Query
 {
-    std::string table = ""; // Required
+  std::string table = ""; // Required
 
-    bool isDistinct = false;
+  bool isDistinct = false;
 
-    std::vector<std::string> selectColumns;
+  std::vector<std::string> selectColumns;
 
-    LSC_ColumnValue whereColumn;
+  LSC_ColumnValue whereColumn;
 
-    std::string search = "";
+  std::string search = "";
 
-    LSC_ColumnOrderBy orderByColumn;
+  LSC_ColumnOrderBy orderByColumn;
 
-    int limit  = 100;
-    int offset = 0;
+  int limit  = 100000;
+  int offset = 0;
 };
 ```
 
@@ -345,13 +360,13 @@ std::vector<LSC_TableRow> first100Rows = LSC_TableGetRows({ .table = "my_table" 
 // SELECT DISTINCT my_column1,my_column2 FROM my_table WHERE my_column1='my value 1' ORDER BY my_column2 DESC LIMIT 10 OFFSET 10;
 
 LSC_Query query = {
-    .table         = "my_table",
-    .isDistinct    = true,
-    .selectColumns = { "my_column1", "my_column2" },
-    .whereColumn   = { .name = "my_column1", .value = "my value 1" },
-    .orderByColumn = { .name = "my_column2", .isDescending = true },
-    .limit         = 10,
-    .offset        = 10
+  .table         = "my_table",
+  .isDistinct    = true,
+  .selectColumns = { "my_column1", "my_column2" },
+  .whereColumn   = { .name = "my_column1", .value = "my value 1" },
+  .orderByColumn = { .name = "my_column2", .isDescending = true },
+  .limit         = 10,
+  .offset        = 10
 };
 
 std::vector<LSC_TableRow> rows = LSC_TableGetRows(query);

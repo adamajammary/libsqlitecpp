@@ -49,10 +49,18 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
         if (!LSC_SQL::IsValid(column.name))
             throw std::runtime_error(TextFormat("Invalid column name '%s'.", column.name.c_str()));
 
-        auto notNull = (column.isNotNull ? " NOT NULL" : "");
-        auto unique  = (column.isUnique  ? " UNIQUE"   : "");
+        const char* type;
 
-        query.append(TextFormat(", %s TEXT COLLATE NOCASE %s %s", column.name.c_str(), unique, notNull));
+        switch (column.type) {
+            case LSC_DATA_TYPE_FLOAT:   type = " REAL"; break;
+            case LSC_DATA_TYPE_INTEGER: type = " INTEGER"; break;
+            default: type = " TEXT COLLATE NOCASE"; break;
+        }
+
+        auto unique  = (column.isUnique  ? " UNIQUE"   : "");
+        auto notNull = (column.isNotNull ? " NOT NULL" : "");
+
+        query.append(TextFormat(", %s %s%s%s", column.name.c_str(), type, unique, notNull));
 
         if (column.isSearchable)
             isSearchable = true;
@@ -153,7 +161,7 @@ int LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column)
     if (!statement)
         throw std::runtime_error("Failed to prepare the statement.");
 
-    sqlite3_bind_text(statement, 1, column.value.c_str(), - 1, nullptr);
+    LSC_SQL::Bind(column, 1, statement);
 
     auto result = LSC_SQL::Execute(statement);
 
@@ -278,7 +286,7 @@ void LSC_TableInsertRow(const std::string& table, const std::vector<LSC_ColumnVa
         throw std::runtime_error("Failed to prepare the statement.");
 
     for (size_t i = 0; i < columnCount; i++)
-        sqlite3_bind_text(statement, (int)(i + 1), columns[i].value.c_str(), -1, nullptr);
+        LSC_SQL::Bind(columns[i], (int)(i + 1), statement);
 
     auto result = LSC_SQL::Execute(statement);
 
@@ -302,7 +310,7 @@ bool LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereCo
 	if (!statement)
         throw std::runtime_error("Failed to prepare the statement.");
 
-    sqlite3_bind_text(statement, 1, whereColumn.value.c_str(), -1, nullptr);
+    LSC_SQL::Bind(whereColumn, 1, statement);
 
 	bool exists = LSC_SQL::GetResultInt(statement);
 
@@ -335,7 +343,7 @@ void LSC_TableUpdateRow(const std::string& table, const std::vector<LSC_ColumnVa
         throw std::runtime_error("Failed to prepare the statement.");
 
     for (size_t i = 0; i < columnCount; i++)
-        sqlite3_bind_text(statement, (int)(i + 1), columns[i].value.c_str(), -1, nullptr);
+        LSC_SQL::Bind(columns[i], (int)(i + 1), statement);
 
     sqlite3_bind_int64(statement, (int)(columnCount + 1), rowId);
 
