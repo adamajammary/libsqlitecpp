@@ -204,7 +204,7 @@ struct LSC_Query
 
   std::string search = "";
 
-  LSC_ColumnOrderBy orderByColumn;
+  std::vector<LSC_ColumnOrderBy> orderByColumns;
 
   int limit  = 100000;
   int offset = 0;

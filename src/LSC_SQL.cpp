@@ -342,18 +342,12 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
     if (!LSC_SQL::IsValid(query.table))
         throw std::runtime_error(TextFormat("Invalid table name '%s'.", query.table.c_str()));
 
-    bool hasOrderBy = !query.orderByColumn.name.empty();
-
-    if (hasOrderBy && !LSC_SQL::IsValid(query.orderByColumn.name))
-        throw std::runtime_error(TextFormat("Invalid orderBy column name '%s'.", query.orderByColumn.name.c_str()));
-
-    bool        hasSelectColumns = !query.selectColumns.empty();
-    std::string selectColumns    = "";
+    std::string selectColumns = "";
 
     for (size_t i = 0; i < query.selectColumns.size(); i++)
     {
         if (!LSC_SQL::IsValid(query.selectColumns[i]))
-            throw std::runtime_error(TextFormat("Invalid column name '%s'.", query.selectColumns[i].c_str()));
+            throw std::runtime_error(TextFormat("Invalid SELECT column name '%s'.", query.selectColumns[i].c_str()));
 
         if (!query.search.empty() && (query.selectColumns[i] == "id"))
             selectColumns.append("rowid");
@@ -374,7 +368,7 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 		for (size_t i = 0; i < query.whereCondition.columns.size(); i++)
 		{
 			if (!LSC_SQL::IsValid(query.whereCondition.columns[i].name))
-				throw std::runtime_error(TextFormat("Invalid where column name '%s'.", query.whereCondition.columns[i].name.c_str()));
+				throw std::runtime_error(TextFormat("Invalid WHERE column name '%s'.", query.whereCondition.columns[i].name.c_str()));
 
 			auto comparison = LSC_SQL::getComparison(query.whereCondition.columns[i].comparison);
 
@@ -392,9 +386,28 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
     else if (hasWhere)
 		whereClause = TextFormat(" WHERE %s", whereCondition.c_str());
 
-    auto distinct = (query.isDistinct ? "DISTINCT " : "");
-    auto columns  = (hasSelectColumns ? selectColumns.c_str() : "*");
-    auto orderBy  = (hasOrderBy ? TextFormat(" ORDER BY %s %s", query.orderByColumn.name.c_str(), (query.orderByColumn.isDescending ? "DESC" : "ASC")) : "");
+	bool hasOrderBy = !query.orderByColumns.empty();
+
+	std::string orderBy = "";
+
+	if (hasOrderBy)
+	{
+		orderBy = " ORDER BY ";
+
+		for (size_t i = 0; i < query.orderByColumns.size(); i++)
+		{
+			if (!LSC_SQL::IsValid(query.orderByColumns[i].name))
+				throw std::runtime_error(TextFormat("Invalid ORDER BY column name '%s'.", query.orderByColumns[i].name.c_str()));
+
+			orderBy.append(TextFormat("%s %s", query.orderByColumns[i].name.c_str(), (query.orderByColumns[i].isDescending ? "DESC" : "ASC")));
+
+			if (i < (query.orderByColumns.size() - 1))
+				orderBy.append(", ");
+		}
+	}
+
+	auto distinct = (query.isDistinct ? "DISTINCT " : "");
+    auto columns  = (!query.selectColumns.empty() ? selectColumns.c_str() : "*");
     auto table    = (!query.search.empty() ? TextFormat("%s_fts", query.table.c_str()) : query.table);
 
 	std::string select;

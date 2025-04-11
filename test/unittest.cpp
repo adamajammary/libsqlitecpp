@@ -245,14 +245,14 @@ namespace LSC_UnitTest
                 Assert::AreEqual("test;value1",  rows[0]["test_column1"].c_str());
                 Assert::AreEqual("test;value2A", rows[1]["test_column2"].c_str());
 
-                rows = LSC_TableGetRows({ .table = TestTable, .orderByColumn = { .name = "test_column_integer" } });
+                rows = LSC_TableGetRows({ .table = TestTable, .orderByColumns = {{ .name = "test_column_integer" }} });
 
                 Assert::AreEqual(2, (int)rows.size());
 
                 Assert::AreEqual("1",  rows[0]["test_column_integer"].c_str());
                 Assert::AreEqual("15", rows[1]["test_column_integer"].c_str());
 
-                rows = LSC_TableGetRows({ .table = TestTable, .orderByColumn = { .name = "test_column_float" } });
+                rows = LSC_TableGetRows({ .table = TestTable, .orderByColumns = {{ .name = "test_column_float" }} });
 
                 Assert::AreEqual(2, (int)rows.size());
 
@@ -276,7 +276,7 @@ namespace LSC_UnitTest
                     .isDistinct     = true,
                     .selectColumns  = { "test_column2" },
                     .whereCondition = { .columns = {{ .name = "test_column2", .value = "test;value2A" }} },
-                    .orderByColumn  = { .name = "test_column2", .isDescending = true },
+                    .orderByColumns = {{ .name = "test_column2", .isDescending = true }},
                     .limit          = 1,
                     .offset         = 0
                 };
@@ -305,7 +305,7 @@ namespace LSC_UnitTest
                     .selectColumns  = { "test_column2" },
                     .whereCondition = { .columns = {{ .name = "test_column2", .value = "test;value2A" }} },
                     .search         = "value2",
-                    .orderByColumn  = { .name = "test_column2", .isDescending = true },
+                    .orderByColumns = {{ .name = "test_column2", .isDescending = true }},
                     .limit          = 1,
                     .offset         = 0
                 };
