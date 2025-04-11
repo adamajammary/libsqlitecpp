@@ -26,11 +26,29 @@
 using LSC_TableRow  = std::unordered_map<std::string, std::string>;
 using LSC_TableRows = std::vector<LSC_TableRow>;
 
+enum LSC_Comparison
+{
+    LSC_COMPARISON_EQUALS,
+    LSC_COMPARISON_NOT_EQUALS,
+    LSC_COMPARISON_IS_NULL,
+    LSC_COMPARISON_IS_NOT_NULL,
+    LSC_COMPARISON_GREATER_THAN,
+    LSC_COMPARISON_GREATER_THAN_OR_EQUALS,
+    LSC_COMPARISON_LESS_THAN,
+    LSC_COMPARISON_LESS_THAN_OR_EQUALS
+};
+
 enum LSC_DataType
 {
     LSC_DATA_TYPE_FLOAT,
     LSC_DATA_TYPE_INTEGER,
     LSC_DATA_TYPE_TEXT
+};
+
+enum LSC_Operation
+{
+    LSC_OPERATION_AND,
+    LSC_OPERATION_OR
 };
 
 struct LSC_ColumnDefinition
@@ -56,7 +74,16 @@ struct LSC_ColumnValue
     std::string name  = ""; // Required
     std::string value = "";
 
+    LSC_Comparison comparison = LSC_COMPARISON_EQUALS;
+
     LSC_DataType type = LSC_DATA_TYPE_TEXT;
+};
+
+struct LSC_WhereCondition
+{
+    std::vector<LSC_ColumnValue> columns;
+
+    LSC_Operation operation = LSC_OPERATION_AND;
 };
 
 struct LSC_Query
@@ -67,7 +94,7 @@ struct LSC_Query
 
     std::vector<std::string> selectColumns;
 
-    LSC_ColumnValue whereColumn;
+    LSC_WhereCondition whereCondition;
 
     std::string search = "";
 

@@ -272,13 +272,13 @@ namespace LSC_UnitTest
                 InsertRow();
 
                 LSC_Query query = {
-                    .table         = TestTable,
-                    .isDistinct    = true,
-                    .selectColumns = { "test_column2" },
-                    .whereColumn   = { .name = "test_column2", .value = "test;value2A" },
-                    .orderByColumn = { .name = "test_column2", .isDescending = true },
-                    .limit         = 1,
-                    .offset        = 0
+                    .table          = TestTable,
+                    .isDistinct     = true,
+                    .selectColumns  = { "test_column2" },
+                    .whereCondition = { .columns = {{ .name = "test_column2", .value = "test;value2A" }} },
+                    .orderByColumn  = { .name = "test_column2", .isDescending = true },
+                    .limit          = 1,
+                    .offset         = 0
                 };
 
                 auto rows = LSC_TableGetRows(query);
@@ -300,14 +300,14 @@ namespace LSC_UnitTest
                 InsertRow();
 
                 LSC_Query query = {
-                    .table         = TestTable,
-                    .isDistinct    = true,
-                    .selectColumns = { "test_column2" },
-                    .whereColumn   = { .name = "test_column2", .value = "test;value2A" },
-                    .search        = "value2",
-                    .orderByColumn = { .name = "test_column2", .isDescending = true },
-                    .limit         = 1,
-                    .offset        = 0
+                    .table          = TestTable,
+                    .isDistinct     = true,
+                    .selectColumns  = { "test_column2" },
+                    .whereCondition = { .columns = {{ .name = "test_column2", .value = "test;value2A" }} },
+                    .search         = "value2",
+                    .orderByColumn  = { .name = "test_column2", .isDescending = true },
+                    .limit          = 1,
+                    .offset         = 0
                 };
 
                 auto rows = LSC_TableGetRows(query);
@@ -333,9 +333,9 @@ namespace LSC_UnitTest
                 Assert::AreEqual(2, (int)tableCount);
 
                 LSC_Query query = {
-                    .table         = TestTable,
-                    .selectColumns = { "test_column2" },
-                    .whereColumn   = { .name = "test_column2", .value = "test;value2A" }
+                    .table          = TestTable,
+                    .selectColumns  = { "test_column2" },
+                    .whereCondition = { .columns = {{ .name = "test_column2", .value = "test;value2A" }} }
                 };
 
                 auto queryCount = LSC_TableGetRowCount(query);

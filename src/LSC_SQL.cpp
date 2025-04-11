@@ -22,8 +22,12 @@ void LSC_SQL::Bind(const LSC_Query& query, sqlite3_stmt* statement)
 	if (!searchValue.empty())
 		sqlite3_bind_text(statement, 1, searchValue.c_str(), -1, SQLITE_TRANSIENT);
 
-	if (!query.whereColumn.name.empty())
-		LSC_SQL::Bind(query.whereColumn, (!query.search.empty() ? 2 : 1), statement);
+	int position = (!query.search.empty() ? 2 : 1);
+
+	for (int i = 0; i < (int)query.whereCondition.columns.size(); i++) {
+		if (!query.whereCondition.columns[i].name.empty())
+			LSC_SQL::Bind(query.whereCondition.columns[i], (position + i), statement);
+	}
 }
 
 int LSC_SQL::Execute(const std::string& query)
@@ -85,6 +89,34 @@ int LSC_SQL::Finalize(sqlite3_stmt* statement)
 	#endif
 
 	return result;
+}
+
+std::string LSC_SQL::getComparison(LSC_Comparison comparison)
+{
+	switch (comparison) {
+		case LSC_COMPARISON_EQUALS: return "=";
+		case LSC_COMPARISON_NOT_EQUALS: return "<>";
+		case LSC_COMPARISON_IS_NULL: return " IS NULL ";
+		case LSC_COMPARISON_IS_NOT_NULL: return " IS NOT NULL ";
+		case LSC_COMPARISON_GREATER_THAN: return ">";
+		case LSC_COMPARISON_GREATER_THAN_OR_EQUALS: return ">=";
+		case LSC_COMPARISON_LESS_THAN: return "<";
+		case LSC_COMPARISON_LESS_THAN_OR_EQUALS: return "<=";
+		default: break;
+	}
+
+	return "";
+}
+
+std::string LSC_SQL::getOperation(LSC_Operation operation)
+{
+	switch (operation) {
+		case LSC_OPERATION_AND: return " AND ";
+		case LSC_OPERATION_OR:  return " OR ";
+		default: break;
+	}
+
+	return "";
 }
 
 sqlite3_stmt* LSC_SQL::GetPreparedStatement(const std::string& query)
@@ -315,11 +347,6 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
     if (hasOrderBy && !LSC_SQL::IsValid(query.orderByColumn.name))
         throw std::runtime_error(TextFormat("Invalid orderBy column name '%s'.", query.orderByColumn.name.c_str()));
 
-    bool hasWhere = !query.whereColumn.name.empty();
-
-    if (hasWhere && !LSC_SQL::IsValid(query.whereColumn.name))
-        throw std::runtime_error(TextFormat("Invalid where column name '%s'.", query.whereColumn.name.c_str()));
-
     bool        hasSelectColumns = !query.selectColumns.empty();
     std::string selectColumns    = "";
 
@@ -337,14 +364,33 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
             selectColumns.append(", ");
     }
 
-    std::string filter = "";
+	std::string whereClause    = "";
+	std::string whereCondition = "";
 
-    if (!query.search.empty() && hasWhere)
-        filter = TextFormat(" WHERE %s_fts MATCH ? AND %s=?", query.table.c_str(), query.whereColumn.name.c_str());
+	bool hasWhere = !query.whereCondition.columns.empty();
+
+	if (hasWhere)
+	{
+		for (size_t i = 0; i < query.whereCondition.columns.size(); i++)
+		{
+			if (!LSC_SQL::IsValid(query.whereCondition.columns[i].name))
+				throw std::runtime_error(TextFormat("Invalid where column name '%s'.", query.whereCondition.columns[i].name.c_str()));
+
+			auto comparison = LSC_SQL::getComparison(query.whereCondition.columns[i].comparison);
+
+			whereCondition.append(TextFormat("%s%s?", query.whereCondition.columns[i].name.c_str(), comparison.c_str()));
+
+			if (i < (query.whereCondition.columns.size() - 1))
+				whereCondition.append(LSC_SQL::getOperation(query.whereCondition.operation));
+		}
+	}
+
+	if (!query.search.empty() && hasWhere)
+		whereClause = TextFormat(" WHERE %s_fts MATCH ? AND %s", query.table.c_str(), whereCondition.c_str());
     else if (!query.search.empty())
-        filter = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
+		whereClause = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
     else if (hasWhere)
-        filter = TextFormat(" WHERE %s=?", query.whereColumn.name.c_str());
+		whereClause = TextFormat(" WHERE %s", whereCondition.c_str());
 
     auto distinct = (query.isDistinct ? "DISTINCT " : "");
     auto columns  = (hasSelectColumns ? selectColumns.c_str() : "*");
@@ -354,9 +400,9 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	std::string select;
 
 	if (noLimit)
-		select = TextFormat("SELECT %s%s FROM %s%s%s", distinct, columns, table.c_str(), filter.c_str(), orderBy.c_str());
+		select = TextFormat("SELECT %s%s FROM %s%s%s", distinct, columns, table.c_str(), whereClause.c_str(), orderBy.c_str());
 	else
-		select = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns, table.c_str(), filter.c_str(), orderBy.c_str(), query.limit, query.offset);
+		select = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns, table.c_str(), whereClause.c_str(), orderBy.c_str(), query.limit, query.offset);
 
 	return select;
 }

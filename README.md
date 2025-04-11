@@ -112,6 +112,22 @@ devenv.com sqlitecpp.sln -build "Release|x64"
 
 ## Library
 
+### LSC_Comparison
+
+```cpp
+enum LSC_Comparison
+{
+  LSC_COMPARISON_EQUALS,
+  LSC_COMPARISON_NOT_EQUALS,
+  LSC_COMPARISON_IS_NULL,
+  LSC_COMPARISON_IS_NOT_NULL,
+  LSC_COMPARISON_GREATER_THAN,
+  LSC_COMPARISON_GREATER_THAN_OR_EQUALS,
+  LSC_COMPARISON_LESS_THAN,
+  LSC_COMPARISON_LESS_THAN_OR_EQUALS
+};
+```
+
 ### LSC_DataType
 
 ```cpp
@@ -120,6 +136,16 @@ enum LSC_DataType
   LSC_DATA_TYPE_FLOAT,
   LSC_DATA_TYPE_INTEGER,
   LSC_DATA_TYPE_TEXT
+};
+```
+
+### LSC_Operation
+
+```cpp
+enum LSC_Operation
+{
+  LSC_OPERATION_AND,
+  LSC_OPERATION_OR
 };
 ```
 
@@ -157,6 +183,8 @@ struct LSC_ColumnValue
   std::string name  = ""; // Required
   std::string value = "";
 
+  LSC_Comparison comparison = LSC_COMPARISON_EQUALS;
+
   LSC_DataType type = LSC_DATA_TYPE_TEXT;
 };
 ```
@@ -172,7 +200,7 @@ struct LSC_Query
 
   std::vector<std::string> selectColumns;
 
-  LSC_ColumnValue whereColumn;
+  LSC_WhereCondition whereCondition;
 
   std::string search = "";
 
@@ -180,6 +208,17 @@ struct LSC_Query
 
   int limit  = 100000;
   int offset = 0;
+};
+```
+
+### LSC_WhereCondition
+
+```cpp
+struct LSC_WhereCondition
+{
+  std::vector<LSC_ColumnValue> columns;
+
+  LSC_Operation operation = LSC_OPERATION_AND;
 };
 ```
 

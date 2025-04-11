@@ -32,6 +32,8 @@ public:
 	static bool          IsValid(const std::string& value);
 
 private:
+	static std::string  getComparison(LSC_Comparison comparison);
+	static std::string  getOperation(LSC_Operation operation);
 	static LSC_TableRow getRow(sqlite3_stmt* statement);
 };
 
