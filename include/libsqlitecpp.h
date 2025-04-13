@@ -146,11 +146,11 @@ DLLEXPORT void DLL LSC_TableDelete(const std::string& table);
 DLLEXPORT void DLL LSC_TableDeleteRow(const std::string& table, int64_t rowId);
 
 /**
- * @brief Deletes rows with a matching column value.
+ * @brief Deletes the rows that matches the where condition, and returns the number of rows deleted.
  * @returns the number of rows deleted
  * @throws runtime_error
  */
-DLLEXPORT int DLL LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column);
+DLLEXPORT int DLL LSC_TableDeleteRows(const std::string& table, const LSC_WhereCondition& whereCondition);
 
 /**
  * Deletes all the rows in the table.

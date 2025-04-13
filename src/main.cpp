@@ -147,21 +147,20 @@ void LSC_TableDeleteRow(const std::string& table, int64_t rowId)
     LSC_SQL::Finalize(statement);
 }
 
-int LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column)
+int LSC_TableDeleteRows(const std::string& table, const LSC_WhereCondition& whereCondition)
 {
     if (!LSC_SQL::IsValid(table))
         throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
 
-    if (!LSC_SQL::IsValid(column.name))
-        throw std::runtime_error(TextFormat("Invalid column name '%s'.", column.name.c_str()));
-
-    auto query     = TextFormat("DELETE FROM %s WHERE %s=?;", table.c_str(), column.name.c_str());
-    auto statement = LSC_SQL::GetPreparedStatement(query);
+	auto whereClause = LSC_SQL::GetWhereCondition(whereCondition);
+    auto query       = TextFormat("DELETE FROM %s WHERE %s;", table.c_str(), whereClause.c_str());
+    auto statement   = LSC_SQL::GetPreparedStatement(query);
 
     if (!statement)
         throw std::runtime_error("Failed to prepare the statement.");
 
-    LSC_SQL::Bind(column, 1, statement);
+    for (int i = 0; i < (int)whereCondition.columns.size(); i++)
+        LSC_SQL::Bind(whereCondition.columns[i], (i + 1), statement);
 
     auto result = LSC_SQL::Execute(statement);
 

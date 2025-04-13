@@ -24,10 +24,8 @@ void LSC_SQL::Bind(const LSC_Query& query, sqlite3_stmt* statement)
 
 	int position = (!query.search.empty() ? 2 : 1);
 
-	for (int i = 0; i < (int)query.whereCondition.columns.size(); i++) {
-		if (!query.whereCondition.columns[i].name.empty())
-			LSC_SQL::Bind(query.whereCondition.columns[i], (position + i), statement);
-	}
+	for (int i = 0; i < (int)query.whereCondition.columns.size(); i++)
+		LSC_SQL::Bind(query.whereCondition.columns[i], (position + i), statement);
 }
 
 int LSC_SQL::Execute(const std::string& query)
@@ -358,26 +356,10 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
             selectColumns.append(", ");
     }
 
-	std::string whereClause    = "";
-	std::string whereCondition = "";
+	bool hasWhere       = !query.whereCondition.columns.empty();
+	auto whereCondition = LSC_SQL::GetWhereCondition(query.whereCondition);
 
-	bool hasWhere = !query.whereCondition.columns.empty();
-
-	if (hasWhere)
-	{
-		for (size_t i = 0; i < query.whereCondition.columns.size(); i++)
-		{
-			if (!LSC_SQL::IsValid(query.whereCondition.columns[i].name))
-				throw std::runtime_error(TextFormat("Invalid WHERE column name '%s'.", query.whereCondition.columns[i].name.c_str()));
-
-			auto comparison = LSC_SQL::getComparison(query.whereCondition.columns[i].comparison);
-
-			whereCondition.append(TextFormat("%s%s?", query.whereCondition.columns[i].name.c_str(), comparison.c_str()));
-
-			if (i < (query.whereCondition.columns.size() - 1))
-				whereCondition.append(LSC_SQL::getOperation(query.whereCondition.operation));
-		}
-	}
+	std::string whereClause = "";
 
 	if (!query.search.empty() && hasWhere)
 		whereClause = TextFormat(" WHERE %s_fts MATCH ? AND %s", query.table.c_str(), whereCondition.c_str());
@@ -443,6 +425,29 @@ std::string LSC_SQL::GetValue(sqlite3_stmt* statement)
 	#endif
 
 	return "";
+}
+
+std::string LSC_SQL::GetWhereCondition(const LSC_WhereCondition& whereCondition)
+{
+	if (whereCondition.columns.empty())
+		return "";
+
+	std::string result = "";
+
+	for (size_t i = 0; i < whereCondition.columns.size(); i++)
+	{
+		if (!LSC_SQL::IsValid(whereCondition.columns[i].name))
+			throw std::runtime_error(TextFormat("Invalid WHERE column name '%s'.", whereCondition.columns[i].name.c_str()));
+
+		auto comparison = LSC_SQL::getComparison(whereCondition.columns[i].comparison);
+
+		result.append(TextFormat("%s%s?", whereCondition.columns[i].name.c_str(), comparison.c_str()));
+
+		if (i < (whereCondition.columns.size() - 1))
+			result.append(LSC_SQL::getOperation(whereCondition.operation));
+	}
+
+	return result;
 }
 
 // https://cplusplus.com/reference/regex/ECMAScript/

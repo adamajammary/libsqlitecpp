@@ -309,7 +309,7 @@ void LSC_TableDelete(const std::string& table);
 
 Throws **runtime_error**
 
-### LSC_TableDeleteRow (ROW_ID)
+### LSC_TableDeleteRow (row_id)
 
 ```cpp
 void LSC_TableDeleteRow(const std::string& table, int64_t rowId);
@@ -323,18 +323,18 @@ Throws **runtime_error**
 LSC_TableDeleteRow("my_table", 1);
 ```
 
-### LSC_TableDeleteRow (COLUMN_VALUE)
+### LSC_TableDeleteRows (where_condition)
 
 ```cpp
-int LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column);
+int  LSC_TableDeleteRows(const std::string& table, const LSC_WhereCondition& whereCondition);
 ```
 
-Deletes rows with a matching column value, and returns the number of rows deleted.
+Deletes the rows that matches the where condition, and returns the number of rows deleted.
 
 Throws **runtime_error**
 
 ```cpp
-int rowsDeleted = LSC_TableDeleteRow("my_table", { .name = "my_column2", .value = "my value 2" });
+int rowsDeleted = LSC_TableDeleteRow("my_table", { .columns = {{ .name = "my_column2", .value = "my value 2" }} });
 ```
 
 ### LSC_TableDeleteRows

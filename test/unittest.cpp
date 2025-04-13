@@ -176,13 +176,13 @@ namespace LSC_UnitTest
             }
         }
 
-        TEST_METHOD(DeleteRowByValue)
+        TEST_METHOD(DeleteRowsByValue)
         {
             try
             {
                 InsertRow();
 
-                auto rowsDeleted = LSC_TableDeleteRow(TestTable, { .name = "test_column1", .value = "test;value1" });
+                auto rowsDeleted = LSC_TableDeleteRows(TestTable, { .columns = {{ .name = "test_column1", .value = "test;value1" }} });
 
                 Assert::AreEqual(2, rowsDeleted);
             }

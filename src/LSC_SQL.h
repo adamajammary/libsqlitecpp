@@ -29,6 +29,7 @@ public:
 	static LSC_TableRows GetRows(sqlite3_stmt* statement);
 	static std::string   GetSelect(const LSC_Query& query, bool noLimit = false);
 	static std::string   GetValue(sqlite3_stmt* statement);
+	static std::string   GetWhereCondition(const LSC_WhereCondition& whereCondition);
 	static bool          IsValid(const std::string& value);
 
 private:
