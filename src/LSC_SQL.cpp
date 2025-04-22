@@ -340,7 +340,7 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
     if (!LSC_SQL::IsValid(query.table))
         throw std::runtime_error(TextFormat("Invalid table name '%s'.", query.table.c_str()));
 
-    std::string selectColumns = "";
+    std::string columns = "";
 
     for (size_t i = 0; i < query.selectColumns.size(); i++)
     {
@@ -348,13 +348,16 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
             throw std::runtime_error(TextFormat("Invalid SELECT column name '%s'.", query.selectColumns[i].c_str()));
 
         if (!query.search.empty() && (query.selectColumns[i] == "id"))
-            selectColumns.append("rowid");
+			columns.append("rowid");
         else
-            selectColumns.append(query.selectColumns[i]);
+			columns.append(query.selectColumns[i]);
 
         if (i < (query.selectColumns.size() - 1))
-            selectColumns.append(", ");
+			columns.append(", ");
     }
+
+	if (columns.empty())
+		columns = (!query.search.empty() ? "rowid, *" : "*");
 
 	bool hasWhere       = !query.whereCondition.columns.empty();
 	auto whereCondition = LSC_SQL::GetWhereCondition(query.whereCondition);
@@ -389,15 +392,14 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	}
 
 	auto distinct = (query.isDistinct ? "DISTINCT " : "");
-    auto columns  = (!query.selectColumns.empty() ? selectColumns.c_str() : "*");
     auto table    = (!query.search.empty() ? TextFormat("%s_fts", query.table.c_str()) : query.table);
 
 	std::string select;
 
 	if (noLimit)
-		select = TextFormat("SELECT %s%s FROM %s%s%s", distinct, columns, table.c_str(), whereClause.c_str(), orderBy.c_str());
+		select = TextFormat("SELECT %s%s FROM %s%s%s", distinct, columns.c_str(), table.c_str(), whereClause.c_str(), orderBy.c_str());
 	else
-		select = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns, table.c_str(), whereClause.c_str(), orderBy.c_str(), query.limit, query.offset);
+		select = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns.c_str(), table.c_str(), whereClause.c_str(), orderBy.c_str(), query.limit, query.offset);
 
 	return select;
 }
