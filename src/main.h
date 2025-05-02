@@ -1,11 +1,12 @@
 #ifndef LSC_MAIN_H
 #define LSC_MAIN_H
 
+#include <cstring> // strcmp()
 #include <regex>
 #include <stdexcept>
 
 #if defined _windows
-	#include <windows.h> // DllMain(x)
+	#include <windows.h> // DllMain()
 #endif
 
 extern "C"
