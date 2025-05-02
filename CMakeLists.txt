@@ -5,9 +5,9 @@ project (sqlitecpp)
 # libsqlitecpp depends on the following libraries:
 # - sqlite3
 
-set(EXT_LIB_DIR "${EXT_LIB_DIR}")
-set(INC_DIR     "${EXT_LIB_DIR}/include")
-set(LIB_DIR     "${EXT_LIB_DIR}/lib")
+set(EXT_LIB_DIR "${LSC_EXT_LIB_DIR}")
+set(INC_DIR     "${LSC_EXT_LIB_DIR}/include")
+set(LIB_DIR     "${LSC_EXT_LIB_DIR}/lib")
 set(SRC_DIR     "${CMAKE_SOURCE_DIR}")
 set(DIST_DIR    "${CMAKE_BINARY_DIR}/dist")
 

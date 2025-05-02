@@ -55,7 +55,7 @@ cmake .. -G "Unix Makefiles" \
 -D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_SYSTEM_NAME="Android" \
 -D CMAKE_TOOLCHAIN_FILE="/path/to/ANDROID_NDK/build/cmake/android.toolchain.cmake" \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 make
 ```
@@ -71,8 +71,8 @@ You can get the iOS SDK path with the following command: `xcrun --sdk iphoneos -
 -D CMAKE_OSX_DEPLOYMENT_TARGET="16.5" \
 -D CMAKE_OSX_SYSROOT="/path/to/IOS_SDK" \
 -D CMAKE_SYSTEM_NAME="iOS" \
--D EXT_LIB_DIR="/path/to/libs" \
--D IOS_SDK="iphoneos"
+-D IOS_SDK="iphoneos" \
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 xcodebuild IPHONEOS_DEPLOYMENT_TARGET="16.5" -project sqlitecpp.xcodeproj -configuration Release
 ```
@@ -87,7 +87,7 @@ You can get the macOS SDK path with the following command: `xcrun --sdk macosx -
 -D CMAKE_OSX_ARCHITECTURES="x86_64" \
 -D CMAKE_OSX_DEPLOYMENT_TARGET="13.4" \
 -D CMAKE_OSX_SYSROOT="/path/to/MACOSX_SDK" \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 xcodebuild MACOSX_DEPLOYMENT_TARGET="13.4" -project sqlitecpp.xcodeproj -configuration Release
 ```
@@ -97,7 +97,7 @@ xcodebuild MACOSX_DEPLOYMENT_TARGET="13.4" -project sqlitecpp.xcodeproj -configu
 ```bash
 cmake .. -G "Unix Makefiles" \
 -D CMAKE_BUILD_TYPE=Release \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 make
 ```
@@ -107,7 +107,7 @@ make
 ```bash
 cmake .. -G "Visual Studio 17 2022" \
 -D CMAKE_BUILD_TYPE=Release \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 devenv.com sqlitecpp.sln -build "Release|x64"
 ```
