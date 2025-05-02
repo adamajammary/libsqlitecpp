@@ -1,14 +1,16 @@
 # libsqlitecpp
 
+## A free cross-platform SQLite C++ library
+
 Copyright (C) 2024 Adam A. Jammary (Jammary Studio)
 
-SQLite C++ Library
+libsqlitecpp is a free cross-platform SQLite C++ library.
 
 ## 3rd Party Libraries
 
 Library | Version | License
 ------- | ------- | -------
-[SQLite](https://www.sqlite.org/) | [3.46.0](https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
+[SQLite](https://www.sqlite.org/) | [3.49.1](https://www.sqlite.org/2025/sqlite-autoconf-3490100.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
 
 ## Platform-dependent Include Headers
 
@@ -23,7 +25,7 @@ libsqlitecpp uses modern [C++20](https://en.cppreference.com/w/cpp/compiler_supp
 Compiler | Version
 -------- | -------
 CLANG | 14
-GCC | 11.4
+GCC | 13
 MSVC | 2019
 
 ## How to build
@@ -66,13 +68,13 @@ You can get the iOS SDK path with the following command: `xcrun --sdk iphoneos -
 /Applications/CMake.app/Contents/bin/cmake .. -G "Xcode" \
 -D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_OSX_ARCHITECTURES="arm64" \
--D CMAKE_OSX_DEPLOYMENT_TARGET="14.0" \
+-D CMAKE_OSX_DEPLOYMENT_TARGET="16.5" \
 -D CMAKE_OSX_SYSROOT="/path/to/IOS_SDK" \
 -D CMAKE_SYSTEM_NAME="iOS" \
 -D EXT_LIB_DIR="/path/to/libs" \
 -D IOS_SDK="iphoneos"
 
-xcodebuild IPHONEOS_DEPLOYMENT_TARGET="14.0" -project sqlitecpp.xcodeproj -configuration Release
+xcodebuild IPHONEOS_DEPLOYMENT_TARGET="16.5" -project sqlitecpp.xcodeproj -configuration Release
 ```
 
 ### macOS
@@ -83,11 +85,11 @@ You can get the macOS SDK path with the following command: `xcrun --sdk macosx -
 /Applications/CMake.app/Contents/bin/cmake .. -G "Xcode" \
 -D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_OSX_ARCHITECTURES="x86_64" \
--D CMAKE_OSX_DEPLOYMENT_TARGET="12.6" \
+-D CMAKE_OSX_DEPLOYMENT_TARGET="13.4" \
 -D CMAKE_OSX_SYSROOT="/path/to/MACOSX_SDK" \
 -D EXT_LIB_DIR="/path/to/libs"
 
-xcodebuild MACOSX_DEPLOYMENT_TARGET="12.6" -project sqlitecpp.xcodeproj -configuration Release
+xcodebuild MACOSX_DEPLOYMENT_TARGET="13.4" -project sqlitecpp.xcodeproj -configuration Release
 ```
 
 ### Linux
@@ -110,7 +112,60 @@ cmake .. -G "Visual Studio 17 2022" \
 devenv.com sqlitecpp.sln -build "Release|x64"
 ```
 
-## Library
+## How to use
+
+The first step is to run [LSC_OpenDatabase](#lsc_opendatabase) to open an existing database, or create a new one if it does not exist.
+
+Make sure to call [LSC_CloseDatabase](#lsc_closedatabase) to cleanup all resources and close the library.
+
+```cpp
+try {
+  LSC_OpenDatabase("/path/to/my_database.db");
+
+  // Perform SQL operations by calling LSC_ methods.
+
+  LSC_CloseDatabase();
+} catch (const std::exception& e) {
+  fprintf(stderr, "%s\n", e.what());
+  LSC_CloseDatabase();
+}
+```
+
+### Use the default key/value pair table
+
+See [LSC_Get](#lsc_get) and [LSC_Set](#lsc_set) for more details.
+
+```cpp
+LSC_Set("my_key", "my value");
+
+std::string myValue = LSC_Get("my_key");
+```
+
+### Create and use a custom table
+
+See [LSC_TableCreate](#lsc_tablecreate), [LSC_TableInsertRow](#lsc_tableinsertrow) and [LSC_TableGetRows](#lsc_tablegetrows) for more examples.
+
+```cpp
+std::vector<LSC_ColumnDefinition> columns = {
+  { .name = "my_column1" },
+  { .name = "my_column2", .isNotNull = true, .isSearchable = true, .isUnique = true }
+};
+
+LSC_TableCreate("my_table", columns);
+
+std::vector<LSC_ColumnValue> row = {
+  { .name = "my_column1", .value = "my value 1" },
+  { .name = "my_column2", .value = "my value 2" }
+};
+
+LSC_TableInsertRow("my_table", row);
+
+LSC_Query query = { .table = "my_table" };
+
+std::vector<LSC_TableRow> rows = LSC_TableGetRows(query);
+```
+
+## API
 
 ### LSC_Comparison
 
@@ -390,9 +445,9 @@ std::vector<LSC_TableRow> LSC_TableGetRows(const LSC_Query& query);
 Throws **runtime_error**
 
 ```cpp
-// SELECT * FROM my_table LIMIT 100 OFFSET 0;
+// SELECT * FROM my_table LIMIT 100000 OFFSET 0;
 
-std::vector<LSC_TableRow> first100Rows = LSC_TableGetRows({ .table = "my_table" });
+std::vector<LSC_TableRow> rows = LSC_TableGetRows({ .table = "my_table" });
 ```
 
 ```cpp
