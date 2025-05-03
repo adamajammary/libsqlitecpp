@@ -1,14 +1,16 @@
 # libsqlitecpp
 
+## A free cross-platform SQLite C++ library
+
 Copyright (C) 2024 Adam A. Jammary (Jammary Studio)
 
-SQLite C++ Library
+libsqlitecpp is a free cross-platform SQLite C++ library.
 
 ## 3rd Party Libraries
 
 Library | Version | License
 ------- | ------- | -------
-[SQLite](https://www.sqlite.org/) | [3.45.3](https://www.sqlite.org/2024/sqlite-autoconf-3450300.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
+[SQLite](https://www.sqlite.org/) | [3.49.1](https://www.sqlite.org/2025/sqlite-autoconf-3490100.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
 
 ## Platform-dependent Include Headers
 
@@ -28,6 +30,8 @@ MSVC | 2019
 
 ## How to build
 
+SQLite must be built with [FTS5](https://sqlite.org/fts5.html#building_fts5_as_part_of_sqlite) support.
+
 1. Build the [third-party libraries](#3rd-party-libraries) and place the them in a common directory.
 1. Make sure you have [cmake](https://cmake.org/download/) installed.
 1. Open a command prompt or terminal.
@@ -45,12 +49,13 @@ Make sure you have [Android NDK](https://developer.android.com/ndk/downloads) in
 
 ```bash
 cmake .. -G "Unix Makefiles" \
+-D ANDROID_ABI="arm64-v8a" \
+-D ANDROID_NDK="/path/to/ANDROID_NDK" \
+-D ANDROID_PLATFORM="android-29" \
+-D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_SYSTEM_NAME="Android" \
 -D CMAKE_TOOLCHAIN_FILE="/path/to/ANDROID_NDK/build/cmake/android.toolchain.cmake" \
--D ANDROID_NDK="/path/to/ANDROID_NDK" \
--D ANDROID_ABI="arm64-v8a" \
--D ANDROID_PLATFORM="android-29" \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 make
 ```
@@ -61,14 +66,15 @@ You can get the iOS SDK path with the following command: `xcrun --sdk iphoneos -
 
 ```bash
 /Applications/CMake.app/Contents/bin/cmake .. -G "Xcode" \
--D CMAKE_SYSTEM_NAME="iOS" \
+-D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_OSX_ARCHITECTURES="arm64" \
--D CMAKE_OSX_DEPLOYMENT_TARGET="12.5" \
+-D CMAKE_OSX_DEPLOYMENT_TARGET="16.5" \
 -D CMAKE_OSX_SYSROOT="/path/to/IOS_SDK" \
+-D CMAKE_SYSTEM_NAME="iOS" \
 -D IOS_SDK="iphoneos" \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
-xcodebuild IPHONEOS_DEPLOYMENT_TARGET="12.5" -project sqlitecpp.xcodeproj -configuration Release
+xcodebuild IPHONEOS_DEPLOYMENT_TARGET="16.5" -project sqlitecpp.xcodeproj -configuration Release
 ```
 
 ### macOS
@@ -77,18 +83,21 @@ You can get the macOS SDK path with the following command: `xcrun --sdk macosx -
 
 ```bash
 /Applications/CMake.app/Contents/bin/cmake .. -G "Xcode" \
+-D CMAKE_BUILD_TYPE=Release \
 -D CMAKE_OSX_ARCHITECTURES="x86_64" \
--D CMAKE_OSX_DEPLOYMENT_TARGET="12.6" \
+-D CMAKE_OSX_DEPLOYMENT_TARGET="13.4" \
 -D CMAKE_OSX_SYSROOT="/path/to/MACOSX_SDK" \
--D EXT_LIB_DIR="/path/to/libs"
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
-xcodebuild MACOSX_DEPLOYMENT_TARGET="12.6" -project sqlitecpp.xcodeproj -configuration Release
+xcodebuild MACOSX_DEPLOYMENT_TARGET="13.4" -project sqlitecpp.xcodeproj -configuration Release
 ```
 
 ### Linux
 
 ```bash
-cmake .. -G "Unix Makefiles" -D EXT_LIB_DIR="/path/to/libs"
+cmake .. -G "Unix Makefiles" \
+-D CMAKE_BUILD_TYPE=Release \
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 make
 ```
@@ -96,23 +105,117 @@ make
 ### Windows
 
 ```bash
-cmake .. -G "Visual Studio 17 2022" -D EXT_LIB_DIR="/path/to/libs"
+cmake .. -G "Visual Studio 17 2022" \
+-D CMAKE_BUILD_TYPE=Release \
+-D LSC_EXT_LIB_DIR="/path/to/libs"
 
 devenv.com sqlitecpp.sln -build "Release|x64"
 ```
 
-## Library
+## How to use
+
+The first step is to run [LSC_OpenDatabase](#lsc_opendatabase) to open an existing database, or create a new one if it does not exist.
+
+Make sure to call [LSC_CloseDatabase](#lsc_closedatabase) to cleanup all resources and close the library.
+
+```cpp
+try {
+  LSC_OpenDatabase("/path/to/my_database.db");
+
+  // Perform SQL operations by calling LSC_ methods.
+
+  LSC_CloseDatabase();
+} catch (const std::exception& e) {
+  fprintf(stderr, "%s\n", e.what());
+  LSC_CloseDatabase();
+}
+```
+
+### Use the default key/value pair table
+
+See [LSC_Get](#lsc_get) and [LSC_Set](#lsc_set) for more details.
+
+```cpp
+LSC_Set("my_key", "my value");
+
+std::string myValue = LSC_Get("my_key");
+```
+
+### Create and use a custom table
+
+See [LSC_TableCreate](#lsc_tablecreate), [LSC_TableInsertRow](#lsc_tableinsertrow) and [LSC_TableGetRows](#lsc_tablegetrows) for more examples.
+
+```cpp
+std::vector<LSC_ColumnDefinition> columns = {
+  { .name = "my_column1" },
+  { .name = "my_column2", .isNotNull = true, .isSearchable = true, .isUnique = true }
+};
+
+LSC_TableCreate("my_table", columns);
+
+std::vector<LSC_ColumnValue> row = {
+  { .name = "my_column1", .value = "my value 1" },
+  { .name = "my_column2", .value = "my value 2" }
+};
+
+LSC_TableInsertRow("my_table", row);
+
+LSC_Query query = { .table = "my_table" };
+
+std::vector<LSC_TableRow> rows = LSC_TableGetRows(query);
+```
+
+## API
+
+### LSC_Comparison
+
+```cpp
+enum LSC_Comparison
+{
+  LSC_COMPARISON_EQUALS,
+  LSC_COMPARISON_NOT_EQUALS,
+  LSC_COMPARISON_IS_NULL,
+  LSC_COMPARISON_IS_NOT_NULL,
+  LSC_COMPARISON_GREATER_THAN,
+  LSC_COMPARISON_GREATER_THAN_OR_EQUALS,
+  LSC_COMPARISON_LESS_THAN,
+  LSC_COMPARISON_LESS_THAN_OR_EQUALS
+};
+```
+
+### LSC_DataType
+
+```cpp
+enum LSC_DataType
+{
+  LSC_DATA_TYPE_FLOAT,
+  LSC_DATA_TYPE_INTEGER,
+  LSC_DATA_TYPE_TEXT
+};
+```
+
+### LSC_Operation
+
+```cpp
+enum LSC_Operation
+{
+  LSC_OPERATION_AND,
+  LSC_OPERATION_OR
+};
+```
 
 ### LSC_ColumnDefinition
 
 ```cpp
 struct LSC_ColumnDefinition
 {
-    std::string name = ""; // Required
+  std::string name = ""; // Required
 
-    bool isNotNull    = false;
-    bool isSearchable = false;
-    bool isUnique     = false;
+  LSC_DataType type = LSC_DATA_TYPE_TEXT;
+
+  bool isUnique     = false;
+  bool isNotNull    = false;
+  bool isSearchable = false;
 };
 ```
 
@@ -121,9 +224,9 @@ struct LSC_ColumnDefinition
 ```cpp
 struct LSC_ColumnOrderBy
 {
-    std::string name = ""; // Required
+  std::string name = ""; // Required
 
-    bool isDescending = false;
+  bool isDescending = false;
 };
 ```
 
@@ -132,8 +235,12 @@ struct LSC_ColumnOrderBy
 ```cpp
 struct LSC_ColumnValue
 {
-    std::string name  = ""; // Required
-    std::string value = ""; // Required
+  std::string name  = ""; // Required
+  std::string value = "";
+
+  LSC_Comparison comparison = LSC_COMPARISON_EQUALS;
+
+  LSC_DataType type = LSC_DATA_TYPE_TEXT;
 };
 ```
 
@@ -142,18 +249,31 @@ struct LSC_ColumnValue
 ```cpp
 struct LSC_Query
 {
-    std::string table = ""; // Required
+  std::string table = ""; // Required
 
-    bool isDistinct = false;
+  bool isDistinct = false;
 
-    std::vector<std::string> selectColumns;
+  std::vector<std::string> selectColumns;
 
-    LSC_ColumnValue whereColumn;
+  LSC_WhereCondition whereCondition;
 
-    LSC_ColumnOrderBy orderByColumn;
+  std::string search = "";
 
-    int limit  = 100;
-    int offset = 0;
+  std::vector<LSC_ColumnOrderBy> orderByColumns;
+
+  int limit  = 100000;
+  int offset = 0;
+};
+```
+
+### LSC_WhereCondition
+
+```cpp
+struct LSC_WhereCondition
+{
+  std::vector<LSC_ColumnValue> columns;
+
+  LSC_Operation operation = LSC_OPERATION_AND;
 };
 ```
 
@@ -244,7 +364,7 @@ void LSC_TableDelete(const std::string& table);
 
 Throws **runtime_error**
 
-### LSC_TableDeleteRow (ROW_ID)
+### LSC_TableDeleteRow (row_id)
 
 ```cpp
 void LSC_TableDeleteRow(const std::string& table, int64_t rowId);
@@ -258,19 +378,29 @@ Throws **runtime_error**
 LSC_TableDeleteRow("my_table", 1);
 ```
 
-### LSC_TableDeleteRow (COLUMN_VALUE)
+### LSC_TableDeleteRows (where_condition)
 
 ```cpp
-int LSC_TableDeleteRow(const std::string& table, const LSC_ColumnValue& column);
+int  LSC_TableDeleteRows(const std::string& table, const LSC_WhereCondition& whereCondition);
 ```
 
-Deletes rows with a matching column value, and returns the number of rows deleted.
+Deletes the rows that matches the where condition, and returns the number of rows deleted.
 
 Throws **runtime_error**
 
 ```cpp
-int rowsDeleted = LSC_TableDeleteRow("my_table", { .name = "my_column2", .value = "my value 2" });
+int rowsDeleted = LSC_TableDeleteRow("my_table", { .columns = {{ .name = "my_column2", .value = "my value 2" }} });
 ```
+
+### LSC_TableDeleteRows
+
+Deletes all the rows in the table.
+
+```cpp
+void LSC_TableDeleteRows(const std::string& table);
+```
+
+Throws **runtime_error**
 
 ### LSC_TableGetRow
 
@@ -286,6 +416,26 @@ Throws **runtime_error**
 LSC_TableRow row = LSC_TableGetRow("my_table", 1);
 ```
 
+### LSC_TableGetRowCount (table)
+
+```cpp
+size_t LSC_TableGetRowCount(const std::string& table);
+```
+
+Returns the number of rows in the table.
+
+Throws **runtime_error**
+
+### LSC_TableGetRowCount (query)
+
+```cpp
+size_t LSC_TableGetRowCount(const LSC_Query& query);
+```
+
+Returns the number of rows the query would return.
+
+Throws **runtime_error**
+
 ### LSC_TableGetRows
 
 ```cpp
@@ -295,22 +445,22 @@ std::vector<LSC_TableRow> LSC_TableGetRows(const LSC_Query& query);
 Throws **runtime_error**
 
 ```cpp
-// SELECT * FROM my_table LIMIT 100 OFFSET 0;
+// SELECT * FROM my_table LIMIT 100000 OFFSET 0;
 
-std::vector<LSC_TableRow> first100Rows = LSC_TableGetRows({ .table = "my_table" });
+std::vector<LSC_TableRow> rows = LSC_TableGetRows({ .table = "my_table" });
 ```
 
 ```cpp
 // SELECT DISTINCT my_column1,my_column2 FROM my_table WHERE my_column1='my value 1' ORDER BY my_column2 DESC LIMIT 10 OFFSET 10;
 
 LSC_Query query = {
-    .table         = "my_table",
-    .isDistinct    = true,
-    .selectColumns = { "my_column1", "my_column2" },
-    .whereColumn   = { .name = "my_column1", .value = "my value 1" },
-    .orderByColumn = { .name = "my_column2", .isDescending = true },
-    .limit         = 10,
-    .offset        = 10
+  .table         = "my_table",
+  .isDistinct    = true,
+  .selectColumns = { "my_column1", "my_column2" },
+  .whereColumn   = { .name = "my_column1", .value = "my value 1" },
+  .orderByColumn = { .name = "my_column2", .isDescending = true },
+  .limit         = 10,
+  .offset        = 10
 };
 
 std::vector<LSC_TableRow> rows = LSC_TableGetRows(query);
@@ -331,6 +481,20 @@ columns.push_back({ .name = "my_column1", .value = "my value 1" });
 columns.push_back({ .name = "my_column2", .value = "my value 2" });
 
 LSC_TableInsertRow("my_table", columns);
+```
+
+### LSC_TableRowExists
+
+```cpp
+bool LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereColumn);
+```
+
+Returns true if a row with a matching column value already exists.
+
+Throws **runtime_error**
+
+```cpp
+bool rowExists = LSC_TableRowExists("my_table", { .name = "my_column1", .value = "my value 1" });
 ```
 
 ### LSC_TableUpdateRow

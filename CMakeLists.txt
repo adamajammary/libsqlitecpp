@@ -5,10 +5,11 @@ project (sqlitecpp)
 # libsqlitecpp depends on the following libraries:
 # - sqlite3
 
-set(EXT_LIB_DIR "${EXT_LIB_DIR}")
-set(INC_DIR     "${EXT_LIB_DIR}/include")
-set(LIB_DIR     "${EXT_LIB_DIR}/lib")
+set(EXT_LIB_DIR "${LSC_EXT_LIB_DIR}")
+set(INC_DIR     "${LSC_EXT_LIB_DIR}/include")
+set(LIB_DIR     "${LSC_EXT_LIB_DIR}/lib")
 set(SRC_DIR     "${CMAKE_SOURCE_DIR}")
+set(DIST_DIR    "${CMAKE_BINARY_DIR}/dist")
 
 set(CMAKE_CXX_STANDARD          "20")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,27 +69,44 @@ target_include_directories(sqlitecpp PRIVATE ${INCS})
 target_link_directories(sqlitecpp    PRIVATE ${LIB_DIR})
 target_link_libraries(sqlitecpp      PRIVATE ${LIBS})
 
-# install
+# libsqlitecpp
 
-install(FILES "${LIB_DIR}/${EXT_LIB_SQL}" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+if (WIN32)
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND if exist \"${DIST_DIR}\" rmdir /s /q \"${DIST_DIR}\")
 
-install(DIRECTORY "${SRC_DIR}/include/" DESTINATION "${CMAKE_INSTALL_PREFIX}/include/libsqlitecpp")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND if not exist \"${DIST_DIR}/bin\"     mkdir \"${DIST_DIR}/bin\")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND if not exist \"${DIST_DIR}/include\" mkdir \"${DIST_DIR}/include\")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND if not exist \"${DIST_DIR}/lib\"     mkdir \"${DIST_DIR}/lib\")
+else()
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND rm -rf \"${DIST_DIR}\")
 
-install(FILES "${SRC_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_PREFIX}" RENAME "LICENSE-libsqlitecpp.txt")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND mkdir -p \"${DIST_DIR}/bin\")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND mkdir -p \"${DIST_DIR}/include\")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND mkdir -p \"${DIST_DIR}/lib\")
+endif()
 
 if (IOS)
-    install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>-${IOS_SDK}/libsqlitecpp.a" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-    install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>-${IOS_SDK}/libsqlitecpp.a" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f $<CONFIG>-${IOS_SDK}/libsqlitecpp.a ${DIST_DIR}/lib/)
 elseif (APPLE)
-    install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/libsqlitecpp.dylib" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-    install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/libsqlitecpp.dylib" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f $<CONFIG>/libsqlitecpp.dylib ${DIST_DIR}/lib/)
 elseif (WIN32)
-    install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/sqlitecpp.dll" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-    install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/sqlitecpp.dll" "${CMAKE_BINARY_DIR}/$<CONFIG>/sqlitecpp.lib" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f $(Configuration)/sqlitecpp.lib ${DIST_DIR}/lib/)
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f $(Configuration)/sqlitecpp.dll ${DIST_DIR}/lib/)
 else()
-    install(FILES "${CMAKE_BINARY_DIR}/libsqlitecpp.so" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-    install(FILES "${CMAKE_BINARY_DIR}/libsqlitecpp.so" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f libsqlitecpp.so ${DIST_DIR}/lib/)
 endif()
+
+add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f ${LIB_SQL} ${DIST_DIR}/bin/)
+
+add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f ${SRC_DIR}/include/*.h ${DIST_DIR}/include/)
+
+add_custom_command(TARGET sqlitecpp POST_BUILD COMMAND cp -f ${SRC_DIR}/LICENSE ${DIST_DIR}/LICENSE-libsqlitecpp.txt)
+
+# install
+
+install(DIRECTORY ${DIST_DIR}/lib/     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+install(DIRECTORY ${DIST_DIR}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/libsqlitecpp)
+install(DIRECTORY ${DIST_DIR}/         DESTINATION ${CMAKE_INSTALL_PREFIX} FILES_MATCHING PATTERN "*.txt")
 
 # unittest
 
