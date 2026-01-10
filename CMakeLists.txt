@@ -13,6 +13,7 @@ set(DIST_DIR    "${CMAKE_BINARY_DIR}/dist")
 
 set(CMAKE_CXX_STANDARD          "20")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS        OFF)
 
 if (IOS)
     set(EXT_LIB_SQL libsqlite3.a)

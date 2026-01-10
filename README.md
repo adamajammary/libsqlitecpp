@@ -10,7 +10,7 @@ libsqlitecpp is a free cross-platform SQLite C++ library.
 
 Library | Version | License
 ------- | ------- | -------
-[SQLite](https://www.sqlite.org/) | [3.49.2](https://www.sqlite.org/2025/sqlite-autoconf-3490200.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
+[SQLite](https://www.sqlite.org/) | [3.51.2](https://www.sqlite.org/2026/sqlite-autoconf-3510200.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
 
 ## Platform-dependent Include Headers
 
