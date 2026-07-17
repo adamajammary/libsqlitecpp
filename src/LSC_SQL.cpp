@@ -140,13 +140,13 @@ sqlite3_stmt* LSC_SQL::GetPreparedStatement(const std::string& query)
 
 std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE VIRTUAL TABLE IF NOT EXISTS %s_fts USING FTS5 (content=%s, content_rowid=id",
-		table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE VIRTUAL TABLE IF NOT EXISTS {}_fts USING FTS5 (content={}, content_rowid=id",
+		table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(");");
 
@@ -155,18 +155,18 @@ std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<LSC
 
 std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE TRIGGER IF NOT EXISTS %s_fts_delete AFTER DELETE ON %s BEGIN INSERT INTO %s_fts (%s_fts, rowid",
-		table.c_str(), table.c_str(), table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE TRIGGER IF NOT EXISTS {}_fts_delete AFTER DELETE ON {} BEGIN INSERT INTO {}_fts ({}_fts, rowid",
+		table, table, table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES ('delete', OLD.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", OLD.%s", column.name.c_str()));
+		query.append(std::format(", OLD.{}", column.name));
 
 	query.append("); END;");
 
@@ -175,18 +175,18 @@ std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::
 
 std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE TRIGGER IF NOT EXISTS %s_fts_insert AFTER INSERT ON %s BEGIN INSERT INTO %s_fts (rowid",
-		table.c_str(), table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE TRIGGER IF NOT EXISTS {}_fts_insert AFTER INSERT ON {} BEGIN INSERT INTO {}_fts (rowid",
+		table, table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES (NEW.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", NEW.%s", column.name.c_str()));
+		query.append(std::format(", NEW.{}", column.name));
 
 	query.append("); END;");
 
@@ -195,28 +195,28 @@ std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::
 
 std::string LSC_SQL::GetQueryTriggerUpdate(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE TRIGGER IF NOT EXISTS %s_fts_update AFTER UPDATE ON %s BEGIN INSERT INTO %s_fts (%s_fts, rowid",
-		table.c_str(), table.c_str(), table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE TRIGGER IF NOT EXISTS {}_fts_update AFTER UPDATE ON {} BEGIN INSERT INTO {}_fts ({}_fts, rowid",
+		table, table, table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES ('delete', OLD.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", OLD.%s", column.name.c_str()));
+		query.append(std::format(", OLD.{}", column.name));
 
-	query.append(TextFormat("); INSERT INTO %s_fts (rowid", table.c_str()));
+	query.append(std::format("); INSERT INTO {}_fts (rowid", table));
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES (NEW.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", NEW.%s", column.name.c_str()));
+		query.append(std::format(", NEW.{}", column.name));
 
 	query.append("); END;");
 
@@ -338,14 +338,14 @@ LSC_TableRows LSC_SQL::GetRows(sqlite3_stmt* statement)
 std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 {
     if (!LSC_SQL::IsValid(query.table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", query.table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", query.table));
 
     std::string columns = "";
 
     for (size_t i = 0; i < query.selectColumns.size(); i++)
     {
         if (!LSC_SQL::IsValid(query.selectColumns[i]))
-            throw std::runtime_error(TextFormat("Invalid SELECT column name '%s'.", query.selectColumns[i].c_str()));
+            throw std::runtime_error(std::format("Invalid SELECT column name '{}'.", query.selectColumns[i]));
 
         if (!query.search.empty() && (query.selectColumns[i] == "id"))
 			columns.append("rowid");
@@ -365,11 +365,11 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	std::string whereClause = "";
 
 	if (!query.search.empty() && hasWhere)
-		whereClause = TextFormat(" WHERE %s_fts MATCH ? AND %s", query.table.c_str(), whereCondition.c_str());
+		whereClause = std::format(" WHERE {}_fts MATCH ? AND {}", query.table, whereCondition);
     else if (!query.search.empty())
-		whereClause = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
+		whereClause = std::format(" WHERE {}_fts MATCH ?", query.table);
     else if (hasWhere)
-		whereClause = TextFormat(" WHERE %s", whereCondition.c_str());
+		whereClause = std::format(" WHERE {}", whereCondition);
 
 	bool hasOrderBy = !query.orderByColumns.empty();
 
@@ -382,9 +382,9 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 		for (size_t i = 0; i < query.orderByColumns.size(); i++)
 		{
 			if (!LSC_SQL::IsValid(query.orderByColumns[i].name))
-				throw std::runtime_error(TextFormat("Invalid ORDER BY column name '%s'.", query.orderByColumns[i].name.c_str()));
+				throw std::runtime_error(std::format("Invalid ORDER BY column name '{}'.", query.orderByColumns[i].name));
 
-			orderBy.append(TextFormat("%s %s", query.orderByColumns[i].name.c_str(), (query.orderByColumns[i].isDescending ? "DESC" : "ASC")));
+			orderBy.append(std::format("{} {}", query.orderByColumns[i].name, (query.orderByColumns[i].isDescending ? "DESC" : "ASC")));
 
 			if (i < (query.orderByColumns.size() - 1))
 				orderBy.append(", ");
@@ -392,14 +392,14 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	}
 
 	auto distinct = (query.isDistinct ? "DISTINCT " : "");
-    auto table    = (!query.search.empty() ? TextFormat("%s_fts", query.table.c_str()) : query.table);
+    auto table    = (!query.search.empty() ? std::format("{}_fts", query.table) : query.table);
 
 	std::string select;
 
 	if (noLimit)
-		select = TextFormat("SELECT %s%s FROM %s%s%s", distinct, columns.c_str(), table.c_str(), whereClause.c_str(), orderBy.c_str());
+		select = std::format("SELECT {}{} FROM {}{}{}", distinct, columns, table, whereClause, orderBy);
 	else
-		select = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns.c_str(), table.c_str(), whereClause.c_str(), orderBy.c_str(), query.limit, query.offset);
+		select = std::format("SELECT {}{} FROM {}{}{} LIMIT {} OFFSET {};", distinct, columns, table, whereClause, orderBy, query.limit, query.offset);
 
 	return select;
 }
@@ -439,11 +439,11 @@ std::string LSC_SQL::GetWhereCondition(const LSC_WhereCondition& whereCondition)
 	for (size_t i = 0; i < whereCondition.columns.size(); i++)
 	{
 		if (!LSC_SQL::IsValid(whereCondition.columns[i].name))
-			throw std::runtime_error(TextFormat("Invalid WHERE column name '%s'.", whereCondition.columns[i].name.c_str()));
+			throw std::runtime_error(std::format("Invalid WHERE column name '{}'.", whereCondition.columns[i].name));
 
 		auto comparison = LSC_SQL::getComparison(whereCondition.columns[i].comparison);
 
-		result.append(TextFormat("%s%s?", whereCondition.columns[i].name.c_str(), comparison.c_str()));
+		result.append(std::format("{}{}?", whereCondition.columns[i].name, comparison));
 
 		if (i < (whereCondition.columns.size() - 1))
 			result.append(LSC_SQL::getOperation(whereCondition.operation));

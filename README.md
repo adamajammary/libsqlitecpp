@@ -16,7 +16,7 @@ Library | Version | License
 
 Platform | Header | Package
 -------- | ------ | -------
-Windows | windows.h | DllMain
+Windows | windows.h | [DllMain](https://learn.microsoft.com/en-us/windows/win32/dlls/dllmain)
 
 ## Compilers and C++20
 
@@ -356,10 +356,33 @@ columns.push_back({ .name = "my_column2", .isNotNull = true, .isSearchable = tru
 LSC_TableCreate("my_table", columns);
 ```
 
+### LSC_TableCreateIndex
+
+```cpp
+void LSC_TableCreateIndex(const std::string& table, const std::string& index, const std::vector<LSC_ColumnOrderBy>& columns);
+```
+
+Table, index and column names must start with a letter, and may only contain letters, numbers and underscores.
+
+Throws **runtime_error**
+
+```cpp
+LSC_TableCreateIndex("my_table", "my_index_col1_asc",  {{ .name = "my_column1" }});
+LSC_TableCreateIndex("my_table", "my_index_col2_desc", {{ .name = "my_column2", .isDescending = true  }});
+```
+
 ### LSC_TableDelete
 
 ```cpp
 void LSC_TableDelete(const std::string& table);
+```
+
+Throws **runtime_error**
+
+### LSC_TableDeleteIndex
+
+```cpp
+void LSC_TableDeleteIndex(const std::string& index);
 ```
 
 Throws **runtime_error**

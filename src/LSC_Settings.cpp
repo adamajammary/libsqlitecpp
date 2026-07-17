@@ -6,7 +6,7 @@ std::string LSC_Settings::Get(const std::string& key)
 	auto statement = LSC_SQL::GetPreparedStatement(query);
 
 	if (!statement)
-		throw std::runtime_error(TextFormat("Failed to get key: %s", key.c_str()));
+		throw std::runtime_error(std::format("Failed to get key: {}", key));
 
 	sqlite3_bind_text(statement, 1, key.c_str(), -1, nullptr);
 
@@ -31,7 +31,7 @@ void LSC_Settings::Set(const std::string& key, const std::string& value)
 	auto statement = LSC_SQL::GetPreparedStatement(query);
 
 	if (!statement)
-		throw std::runtime_error(TextFormat("Failed to set key '%s' with value '%s'.", key.c_str(), value.c_str()));
+		throw std::runtime_error(std::format("Failed to set key '{}' with value '{}'.", key, value));
 
 	sqlite3_bind_text(statement, 1, key.c_str(),   -1, nullptr);
 	sqlite3_bind_text(statement, 2, value.c_str(), -1, nullptr);
@@ -41,7 +41,7 @@ void LSC_Settings::Set(const std::string& key, const std::string& value)
 	auto result = LSC_SQL::Execute(statement);
 
 	if (result != SQLITE_DONE)
-		throw std::runtime_error(TextFormat("Failed to set key '%s' with value '%s'.", key.c_str(), value.c_str()));
+		throw std::runtime_error(std::format("Failed to set key '{}' with value '{}'.", key, value));
 
 	LSC_SQL::Finalize(statement);
 }

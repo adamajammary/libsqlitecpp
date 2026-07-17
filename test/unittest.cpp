@@ -93,6 +93,37 @@ namespace LSC_UnitTest
             }
         }
 
+        TEST_METHOD(CreateIndex)
+        {
+            try
+            {
+                CreateTable();
+
+                LSC_TableCreateIndex(TestTable, "test_index_col1_desc", {{ .name = "test_column1",      .isDescending = true  }});
+                LSC_TableCreateIndex(TestTable, "test_index_col3_asc",  {{ .name = "test_column_float", .isDescending = false }});
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(DeleteIndex)
+        {
+            try
+            {
+                CreateTable();
+                CreateIndex();
+
+                LSC_TableDeleteIndex("test_index_col1_desc");
+                LSC_TableDeleteIndex("test_index_col3_asc");
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
         TEST_METHOD(InsertRow)
         {
             try

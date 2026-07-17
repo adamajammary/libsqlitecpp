@@ -135,9 +135,20 @@ DLLEXPORT void DLL LSC_Set(const std::string& key, const std::string& value);
 DLLEXPORT void DLL LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns);
 
 /**
+ * @brief Table, index and column names must start with a letter, and may only contain letters, numbers and underscores.
+ * @throws runtime_error
+ */
+DLLEXPORT void DLL LSC_TableCreateIndex(const std::string& table, const std::string& index, const std::vector<LSC_ColumnOrderBy>& columns);
+
+/**
  * @throws runtime_error
  */
 DLLEXPORT void DLL LSC_TableDelete(const std::string& table);
+
+/**
+ * @throws runtime_error
+ */
+DLLEXPORT void DLL LSC_TableDeleteIndex(const std::string& index);
 
 /**
  * @brief Deletes a row by primary key ID.

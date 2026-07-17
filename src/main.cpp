@@ -25,7 +25,7 @@ void LSC_OpenDatabase(const std::string& filePath)
     auto result = sqlite3_open(filePath.c_str(), &connection);
 
     if (result != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to open/write: %s", filePath.c_str()));
+        throw std::runtime_error(std::format("Failed to open/write: {}", filePath));
 
     LSC_Settings::Init();
 }
@@ -38,16 +38,16 @@ void LSC_Set(const std::string& key, const std::string& value)
 void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
     bool isSearchable = false;
 
-    auto query = TextFormat("CREATE TABLE IF NOT EXISTS %s (id INTEGER PRIMARY KEY", table.c_str());
+    auto query = std::format("CREATE TABLE IF NOT EXISTS {} (id INTEGER PRIMARY KEY", table);
 
     for (const auto& column : columns)
     {
         if (!LSC_SQL::IsValid(column.name))
-            throw std::runtime_error(TextFormat("Invalid column name '%s'.", column.name.c_str()));
+            throw std::runtime_error(std::format("Invalid column name '{}'.", column.name));
 
         const char* type;
 
@@ -60,7 +60,7 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
         auto unique  = (column.isUnique  ? " UNIQUE"   : "");
         auto notNull = (column.isNotNull ? " NOT NULL" : "");
 
-        query.append(TextFormat(", %s %s%s%s", column.name.c_str(), type, unique, notNull));
+        query.append(std::format(", {} {}{}{}", column.name, type, unique, notNull));
 
         if (column.isSearchable)
             isSearchable = true;
@@ -69,7 +69,7 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
     query.append(");");
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to create table '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to create table '{}'.", table));
 
     if (!isSearchable)
         return;
@@ -77,61 +77,100 @@ void LSC_TableCreate(const std::string& table, const std::vector<LSC_ColumnDefin
     auto queryFTS = LSC_SQL::GetQueryFTS(table, columns);
 
     if (LSC_SQL::Execute(queryFTS) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to create a virtual FTS table for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to create a virtual FTS table for '{}'.", table));
 
     auto queryTriggerInsert = LSC_SQL::GetQueryTriggerInsert(table, columns);
 
     if (LSC_SQL::Execute(queryTriggerInsert) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to create an insert trigger for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to create an insert trigger for '{}'.", table));
 
     auto queryTriggerDelete = LSC_SQL::GetQueryTriggerDelete(table, columns);
 
     if (LSC_SQL::Execute(queryTriggerDelete) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to create a delete trigger for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to create a delete trigger for '{}'.", table));
 
     auto queryTriggerUpdate = LSC_SQL::GetQueryTriggerUpdate(table, columns);
 
     if (LSC_SQL::Execute(queryTriggerUpdate) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to create an update trigger for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to create an update trigger for '{}'.", table));
+}
+
+void LSC_TableCreateIndex(const std::string& table, const std::string& index, const std::vector<LSC_ColumnOrderBy>& columns)
+{
+    if (!LSC_SQL::IsValid(table))
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
+
+    if (!LSC_SQL::IsValid(index))
+        throw std::runtime_error(std::format("Invalid index name '{}'.", index));
+
+    auto columnCount = columns.size();
+    auto query       = std::format("CREATE INDEX IF NOT EXISTS {} ON {} (", index, table);
+
+    for (size_t i = 0; i < columnCount; i++)
+    {
+        if (!LSC_SQL::IsValid(columns[i].name))
+            throw std::runtime_error(std::format("Invalid column name '{}'.", columns[i].name));
+
+        query.append(std::format("{} {}", columns[i].name, (columns[i].isDescending ? "DESC" : "ASC")));
+
+        if (i < (columnCount - 1))
+            query.append(", ");
+    }
+
+    query.append(");");
+
+    if (LSC_SQL::Execute(query) != SQLITE_OK)
+        throw std::runtime_error(std::format("Failed to create index '{}'.", index));
 }
 
 void LSC_TableDelete(const std::string& table)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
-    auto query = TextFormat("DROP TABLE IF EXISTS %s;", table.c_str());
+    auto query = std::format("DROP TABLE IF EXISTS {};", table);
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to drop table '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to drop table '{}'.", table));
 
-    auto queryFTS = TextFormat("DROP TABLE IF EXISTS %s_fts;", table.c_str());
+    auto queryFTS = std::format("DROP TABLE IF EXISTS {}_fts;", table);
 
     if (LSC_SQL::Execute(queryFTS) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to drop virtual FTS table for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to drop virtual FTS table for '{}'.", table));
 
-    auto queryTriggerInsert = TextFormat("DROP TRIGGER IF EXISTS %s_fts_insert;", table.c_str());
+    auto queryTriggerInsert = std::format("DROP TRIGGER IF EXISTS {}_fts_insert;", table);
 
     if (LSC_SQL::Execute(queryTriggerInsert) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to drop insert trigger for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to drop insert trigger for '{}'.", table));
 
-    auto queryTriggerDelete = TextFormat("DROP TRIGGER IF EXISTS %s_fts_delete;", table.c_str());
+    auto queryTriggerDelete = std::format("DROP TRIGGER IF EXISTS {}_fts_delete;", table);
 
     if (LSC_SQL::Execute(queryTriggerDelete) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to drop delete trigger for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to drop delete trigger for '{}'.", table));
 
-    auto queryTriggerUpdate = TextFormat("DROP TRIGGER IF EXISTS %s_fts_update;", table.c_str());
+    auto queryTriggerUpdate = std::format("DROP TRIGGER IF EXISTS {}_fts_update;", table);
 
     if (LSC_SQL::Execute(queryTriggerUpdate) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to drop update trigger for '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to drop update trigger for '{}'.", table));
+}
+
+void LSC_TableDeleteIndex(const std::string& index)
+{
+    if (!LSC_SQL::IsValid(index))
+        throw std::runtime_error(std::format("Invalid index name '{}'.", index));
+
+    auto query = std::format("DROP INDEX IF EXISTS {};", index);
+
+    if (LSC_SQL::Execute(query) != SQLITE_OK)
+        throw std::runtime_error(std::format("Failed to drop index '{}'.", index));
 }
 
 void LSC_TableDeleteRow(const std::string& table, int64_t rowId)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
-    auto query     = TextFormat("DELETE FROM %s WHERE id=?;", table.c_str());
+    auto query     = std::format("DELETE FROM {} WHERE id=?;", table);
     auto statement = LSC_SQL::GetPreparedStatement(query);
 
     if (!statement)
@@ -150,10 +189,10 @@ void LSC_TableDeleteRow(const std::string& table, int64_t rowId)
 int LSC_TableDeleteRows(const std::string& table, const LSC_WhereCondition& whereCondition)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
 	auto whereClause = LSC_SQL::GetWhereCondition(whereCondition);
-    auto query       = TextFormat("DELETE FROM %s WHERE %s;", table.c_str(), whereClause.c_str());
+    auto query       = std::format("DELETE FROM {} WHERE {};", table, whereClause);
     auto statement   = LSC_SQL::GetPreparedStatement(query);
 
     if (!statement)
@@ -175,20 +214,20 @@ int LSC_TableDeleteRows(const std::string& table, const LSC_WhereCondition& wher
 void LSC_TableDeleteRows(const std::string& table)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
-    auto query = TextFormat("DELETE FROM %s;", table.c_str());
+    auto query = std::format("DELETE FROM {};", table);
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
-        throw std::runtime_error(TextFormat("Failed to truncate table '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Failed to truncate table '{}'.", table));
 }
 
 LSC_TableRow LSC_TableGetRow(const std::string& table, int64_t rowId)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
-    auto query     = TextFormat("SELECT * FROM %s WHERE id=?;", table.c_str());
+    auto query     = std::format("SELECT * FROM {} WHERE id=?;", table);
     auto statement = LSC_SQL::GetPreparedStatement(query);
 
     if (!statement)
@@ -206,9 +245,9 @@ LSC_TableRow LSC_TableGetRow(const std::string& table, int64_t rowId)
 size_t LSC_TableGetRowCount(const std::string& table)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
-    auto select    = TextFormat("SELECT COUNT(*) FROM %s;", table.c_str());
+    auto select    = std::format("SELECT COUNT(*) FROM {};", table);
 	auto statement = LSC_SQL::GetPreparedStatement(select);
 
 	if (!statement)
@@ -224,7 +263,7 @@ size_t LSC_TableGetRowCount(const std::string& table)
 size_t LSC_TableGetRowCount(const LSC_Query& query)
 {
     auto querySelect = LSC_SQL::GetSelect(query, true);
-    auto select      = TextFormat("SELECT COUNT(*) FROM (%s);", querySelect.c_str());
+    auto select      = std::format("SELECT COUNT(*) FROM ({});", querySelect);
     auto statement   = LSC_SQL::GetPreparedStatement(select);
 
     if (!statement)
@@ -259,15 +298,15 @@ LSC_TableRows LSC_TableGetRows(const LSC_Query& query)
 void LSC_TableInsertRow(const std::string& table, const std::vector<LSC_ColumnValue>& columns)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
     auto columnCount = columns.size();
-    auto query       = TextFormat("INSERT INTO %s (", table.c_str());
+    auto query       = std::format("INSERT INTO {} (", table);
 
     for (size_t i = 0; i < columnCount; i++)
     {
         if (!LSC_SQL::IsValid(columns[i].name))
-            throw std::runtime_error(TextFormat("Invalid column name '%s'.", columns[i].name.c_str()));
+            throw std::runtime_error(std::format("Invalid column name '{}'.", columns[i].name));
 
         query.append(columns[i].name).append(i < (columnCount - 1) ? ", " : "");
     }
@@ -298,12 +337,12 @@ void LSC_TableInsertRow(const std::string& table, const std::vector<LSC_ColumnVa
 bool LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereColumn)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
     if (whereColumn.name.empty() || !LSC_SQL::IsValid(whereColumn.name))
-        throw std::runtime_error(TextFormat("Invalid where column name '%s'.", whereColumn.name.c_str()));
+        throw std::runtime_error(std::format("Invalid where column name '{}'.", whereColumn.name));
 
-    auto select    = TextFormat("SELECT EXISTS(SELECT 1 FROM %s WHERE %s=?);", table.c_str(), whereColumn.name.c_str());
+    auto select    = std::format("SELECT EXISTS(SELECT 1 FROM {} WHERE {}=?);", table, whereColumn.name);
 	auto statement = LSC_SQL::GetPreparedStatement(select);
 
 	if (!statement)
@@ -321,17 +360,17 @@ bool LSC_TableRowExists(const std::string& table, const LSC_ColumnValue& whereCo
 void LSC_TableUpdateRow(const std::string& table, const std::vector<LSC_ColumnValue>& columns, int64_t rowId)
 {
     if (!LSC_SQL::IsValid(table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", table));
 
     auto columnCount = columns.size();
-    auto query       = TextFormat("UPDATE %s SET ", table.c_str());
+    auto query       = std::format("UPDATE {} SET ", table);
 
     for (size_t i = 0; i < columnCount; i++)
     {
         if (!LSC_SQL::IsValid(columns[i].name))
-            throw std::runtime_error(TextFormat("Invalid column name '%s'.", columns[i].name.c_str()));
+            throw std::runtime_error(std::format("Invalid column name '{}'.", columns[i].name));
 
-        query.append(TextFormat("%s=?", columns[i].name.c_str())).append(i < (columnCount - 1) ? ", " : "");
+        query.append(std::format("{}=?", columns[i].name)).append(i < (columnCount - 1) ? ", " : "");
     }
 
     query.append(" WHERE id=?;");
