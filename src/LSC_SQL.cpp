@@ -10,7 +10,7 @@ void LSC_SQL::Bind(const LSC_ColumnValue& column, int position, sqlite3_stmt* st
 		sqlite3_bind_int64(statement, position, std::atoll(column.value.c_str()));
 		break;
 	default:
-		sqlite3_bind_text(statement, position, column.value.c_str(), -1, nullptr);
+		sqlite3_bind_text(statement, position, LSC_SQL::getTextValue(column).c_str(), -1, SQLITE_TRANSIENT);
 		break;
 	}
 }
@@ -92,6 +92,7 @@ int LSC_SQL::Finalize(sqlite3_stmt* statement)
 std::string LSC_SQL::getComparison(LSC_Comparison comparison)
 {
 	switch (comparison) {
+		case LSC_COMPARISON_CONTAINS: return " LIKE ";
 		case LSC_COMPARISON_EQUALS: return "=";
 		case LSC_COMPARISON_NOT_EQUALS: return "<>";
 		case LSC_COMPARISON_IS_NULL: return " IS NULL ";
@@ -404,6 +405,19 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	return select;
 }
 
+std::string LSC_SQL::getTextValue(const LSC_ColumnValue& column)
+{
+	if (column.comparison != LSC_COMPARISON_CONTAINS)
+		return column.value;
+
+	auto specialCharacters = std::regex("[%_]");
+
+	if (std::regex_search(column.value, specialCharacters))
+		return std::format("%{}%", std::regex_replace(column.value, specialCharacters, "\\$&"));
+
+	return std::format("%{}%", column.value);
+}
+
 std::string LSC_SQL::GetValue(sqlite3_stmt* statement)
 {
 	int result;
@@ -438,12 +452,17 @@ std::string LSC_SQL::GetWhereCondition(const LSC_WhereCondition& whereCondition)
 
 	for (size_t i = 0; i < whereCondition.columns.size(); i++)
 	{
-		if (!LSC_SQL::IsValid(whereCondition.columns[i].name))
-			throw std::runtime_error(std::format("Invalid WHERE column name '{}'.", whereCondition.columns[i].name));
+		const auto& column = whereCondition.columns[i];
 
-		auto comparison = LSC_SQL::getComparison(whereCondition.columns[i].comparison);
+		if (!LSC_SQL::IsValid(column.name))
+			throw std::runtime_error(std::format("Invalid WHERE column name '{}'.", column.name));
 
-		result.append(std::format("{}{}?", whereCondition.columns[i].name, comparison));
+		auto comparison = LSC_SQL::getComparison(column.comparison);
+
+		result.append(std::format("{}{}?", column.name, comparison));
+
+		if ((column.comparison == LSC_COMPARISON_CONTAINS) && std::regex_search(column.value, std::regex("[%_]")))
+			result.append(" ESCAPE '\\'");
 
 		if (i < (whereCondition.columns.size() - 1))
 			result.append(LSC_SQL::getOperation(whereCondition.operation));

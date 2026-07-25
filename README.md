@@ -172,6 +172,7 @@ std::vector<LSC_TableRow> rows = LSC_TableGetRows(query);
 ```cpp
 enum LSC_Comparison
 {
+  LSC_COMPARISON_CONTAINS,
   LSC_COMPARISON_EQUALS,
   LSC_COMPARISON_NOT_EQUALS,
   LSC_COMPARISON_IS_NULL,

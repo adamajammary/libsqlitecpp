@@ -147,6 +147,15 @@ namespace LSC_UnitTest
                 };
 
                 LSC_TableInsertRow(TestTable, row2);
+
+                std::vector<LSC_ColumnValue> row3 = {
+                    {.name = "test_column1", .value = "test;value1" },
+                    {.name = "test_column2", .value = "_test%;%_value_%_2A_" },
+                    {.name = "test_column_float",   .value = "151.1" },
+                    {.name = "test_column_integer", .value = "151" }
+                };
+
+                LSC_TableInsertRow(TestTable, row3);
             }
             catch (const std::exception& e)
             {
@@ -215,7 +224,7 @@ namespace LSC_UnitTest
 
                 auto rowsDeleted = LSC_TableDeleteRows(TestTable, { .columns = {{ .name = "test_column1", .value = "test;value1" }} });
 
-                Assert::AreEqual(2, rowsDeleted);
+                Assert::AreEqual(3, rowsDeleted);
             }
             catch (const std::exception& e)
             {
@@ -271,21 +280,21 @@ namespace LSC_UnitTest
 
                 auto rows = LSC_TableGetRows({ .table = TestTable });
 
-                Assert::AreEqual(2, (int)rows.size());
+                Assert::AreEqual(3, (int)rows.size());
 
                 Assert::AreEqual("test;value1",  rows[0]["test_column1"].c_str());
                 Assert::AreEqual("test;value2A", rows[1]["test_column2"].c_str());
 
                 rows = LSC_TableGetRows({ .table = TestTable, .orderByColumns = {{ .name = "test_column_integer" }} });
 
-                Assert::AreEqual(2, (int)rows.size());
+                Assert::AreEqual(3, (int)rows.size());
 
                 Assert::AreEqual("1",  rows[0]["test_column_integer"].c_str());
                 Assert::AreEqual("15", rows[1]["test_column_integer"].c_str());
 
                 rows = LSC_TableGetRows({ .table = TestTable, .orderByColumns = {{ .name = "test_column_float" }} });
 
-                Assert::AreEqual(2, (int)rows.size());
+                Assert::AreEqual(3, (int)rows.size());
 
                 Assert::AreEqual("1.5",  rows[0]["test_column_float"].c_str());
                 Assert::AreEqual("15.1", rows[1]["test_column_float"].c_str());
@@ -317,6 +326,62 @@ namespace LSC_UnitTest
                 Assert::AreEqual(1, (int)rows.size());
 
                 Assert::AreEqual("test;value2A", rows[0]["test_column2"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(GetRowsWhereContains)
+        {
+            try
+            {
+                InsertRow();
+
+                LSC_Query query = {
+                    .table          = TestTable,
+                    .selectColumns  = { "test_column2" },
+                    .whereCondition = {
+                        .columns = {{ .name = "test_column2", .value = "value", .comparison = LSC_COMPARISON_CONTAINS }}
+                    },
+                    .orderByColumns = {{ .name = "test_column2" }}
+                };
+
+                auto rows = LSC_TableGetRows(query);
+
+                Assert::AreEqual(3, (int)rows.size());
+
+                Assert::AreEqual("_test%;%_value_%_2A_", rows[0]["test_column2"].c_str());
+                Assert::AreEqual("test;value2",          rows[1]["test_column2"].c_str());
+                Assert::AreEqual("test;value2A",         rows[2]["test_column2"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(GetRowsWhereContainsEscaped)
+        {
+            try
+            {
+                InsertRow();
+
+                LSC_Query query = {
+                    .table          = TestTable,
+                    .selectColumns  = { "test_column2" },
+                    .whereCondition = {
+                        .columns = {{ .name = "test_column2", .value = ";%_value_%_", .comparison = LSC_COMPARISON_CONTAINS }}
+                    },
+                    .orderByColumns = {{ .name = "test_column2" }}
+                };
+
+                auto rows = LSC_TableGetRows(query);
+
+                Assert::AreEqual(1, (int)rows.size());
+
+                Assert::AreEqual("_test%;%_value_%_2A_", rows[0]["test_column2"].c_str());
             }
             catch (const std::exception& e)
             {
@@ -361,7 +426,7 @@ namespace LSC_UnitTest
 
                 auto tableCount = LSC_TableGetRowCount(TestTable);
 
-                Assert::AreEqual(2, (int)tableCount);
+                Assert::AreEqual(3, (int)tableCount);
 
                 LSC_Query query = {
                     .table          = TestTable,

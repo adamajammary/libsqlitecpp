@@ -28,6 +28,7 @@ using LSC_TableRows = std::vector<LSC_TableRow>;
 
 enum LSC_Comparison
 {
+    LSC_COMPARISON_CONTAINS,
     LSC_COMPARISON_EQUALS,
     LSC_COMPARISON_NOT_EQUALS,
     LSC_COMPARISON_IS_NULL,
