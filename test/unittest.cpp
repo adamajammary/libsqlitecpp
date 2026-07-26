@@ -8,18 +8,19 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace LSC_UnitTest
 {
-    const std::string TestTable = "Test_Table1";
+    const std::string TestTable     = "Test_Table1";
+    const int         TotalRowCount = 4;
 
     TEST_MODULE_INITIALIZE(Start)
     {
         try
         {
-            HMODULE      hmodule;
+            HMODULE      hModule;
             static TCHAR moduleName;
             TCHAR        pathA[MAX_PATH + 1];
 
-            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, &moduleName, &hmodule);
-            GetModuleFileNameA(hmodule, pathA, (MAX_PATH + 1));
+            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, &moduleName, &hModule);
+            GetModuleFileNameA(hModule, pathA, (MAX_PATH + 1));
 
             LSC_OpenDatabase(std::string(pathA).append(".test.db"));
         }
@@ -133,29 +134,38 @@ namespace LSC_UnitTest
                 std::vector<LSC_ColumnValue> row1 = {
                     { .name = "test_column1", .value = "test;value1" },
                     { .name = "test_column2", .value = "test;value2" },
-                    { .name = "test_column_float",   .value = "15.1" },
-                    { .name = "test_column_integer", .value = "15" },
+                    { .name = "test_column_float",   .value = "15.1",.type = LSC_DATA_TYPE_FLOAT },
+                    { .name = "test_column_integer", .value = "15",  .type = LSC_DATA_TYPE_INTEGER },
                 };
 
                 LSC_TableInsertRow(TestTable, row1);
 
                 std::vector<LSC_ColumnValue> row2 = {
-                    {.name = "test_column1", .value = "test;value1" },
-                    {.name = "test_column2", .value = "test;value2A" },
-                    {.name = "test_column_float",   .value = "1.5" },
-                    {.name = "test_column_integer", .value = "1" }
+                    { .name = "test_column1", .value = "test;value1" },
+                    { .name = "test_column2", .value = "test;value2A" },
+                    { .name = "test_column_float",   .value = "1.5",.type = LSC_DATA_TYPE_FLOAT },
+                    { .name = "test_column_integer", .value = "1",  .type = LSC_DATA_TYPE_INTEGER }
                 };
 
                 LSC_TableInsertRow(TestTable, row2);
 
                 std::vector<LSC_ColumnValue> row3 = {
-                    {.name = "test_column1", .value = "test;value1" },
-                    {.name = "test_column2", .value = "_test%;%_value_%_2A_" },
-                    {.name = "test_column_float",   .value = "151.1" },
-                    {.name = "test_column_integer", .value = "151" }
+                    { .name = "test_column1", .value = "test;value1" },
+                    { .name = "test_column2", .value = "_test%;%_value_%_2A_" },
+                    { .name = "test_column_float",   .value = "151.1",.type = LSC_DATA_TYPE_FLOAT },
+                    { .name = "test_column_integer", .value = "151",  .type = LSC_DATA_TYPE_INTEGER }
                 };
 
                 LSC_TableInsertRow(TestTable, row3);
+
+                std::vector<LSC_ColumnValue> row4 = {
+                    { .name = "test_column1", .type = LSC_DATA_TYPE_NULL },
+                    { .name = "test_column2", .value = "test;value2C" },
+                    { .name = "test_column_float",   .type = LSC_DATA_TYPE_NULL },
+                    { .name = "test_column_integer", .type = LSC_DATA_TYPE_NULL }
+                };
+
+                LSC_TableInsertRow(TestTable, row4);
             }
             catch (const std::exception& e)
             {
@@ -163,7 +173,100 @@ namespace LSC_UnitTest
             }
         }
 
-        TEST_METHOD(UpdateRow)
+        TEST_METHOD(UpdateRowFloat)
+        {
+            try
+            {
+                InsertRow();
+
+                std::vector<LSC_ColumnValue> columns = {
+                    { .name = "test_column_float", .value = "-15.1abc", .type = LSC_DATA_TYPE_FLOAT }
+                };
+
+                LSC_TableUpdateRow(TestTable, columns, 1);
+
+                columns = {{ .name = "test_column_float", .value = "1.5 def", .type = LSC_DATA_TYPE_FLOAT }};
+
+                LSC_TableUpdateRow(TestTable, columns, 2);
+
+                auto row1 = LSC_TableGetRow(TestTable, 1);
+                auto row2 = LSC_TableGetRow(TestTable, 2);
+
+                Assert::AreEqual(5, (int)row1.size());
+                Assert::AreEqual(5, (int)row2.size());
+
+                Assert::AreEqual("-15.1", row1["test_column_float"].c_str());
+                Assert::AreEqual("1.5",   row2["test_column_float"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(UpdateRowInteger)
+        {
+            try
+            {
+                InsertRow();
+
+                std::vector<LSC_ColumnValue> columns = {
+                    { .name = "test_column_integer", .value = "-15.1abc", .type = LSC_DATA_TYPE_INTEGER }
+                };
+
+                LSC_TableUpdateRow(TestTable, columns, 1);
+
+                columns = {{ .name = "test_column_integer", .value = "1.5 def", .type = LSC_DATA_TYPE_INTEGER }};
+
+                LSC_TableUpdateRow(TestTable, columns, 2);
+
+                auto row1 = LSC_TableGetRow(TestTable, 1);
+                auto row2 = LSC_TableGetRow(TestTable, 2);
+
+                Assert::AreEqual(5, (int)row1.size());
+                Assert::AreEqual(5, (int)row2.size());
+
+                Assert::AreEqual("-15", row1["test_column_integer"].c_str());
+                Assert::AreEqual("1",   row2["test_column_integer"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(UpdateRowNull)
+        {
+            try
+            {
+                InsertRow();
+
+                InsertRow();
+
+                std::vector<LSC_ColumnValue> columns = {{ .name = "test_column1", .type = LSC_DATA_TYPE_NULL }};
+
+                LSC_TableUpdateRow(TestTable, columns, 1);
+
+                columns = {{ .name = "test_column1", .type = LSC_DATA_TYPE_NULL }};
+
+                LSC_TableUpdateRow(TestTable, columns, 2);
+
+                auto row1 = LSC_TableGetRow(TestTable, 1);
+                auto row2 = LSC_TableGetRow(TestTable, 2);
+
+                Assert::AreEqual(5, (int)row1.size());
+                Assert::AreEqual(5, (int)row2.size());
+
+                Assert::AreEqual("", row1["test_column1"].c_str());
+                Assert::AreEqual("", row2["test_column1"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(UpdateRowText)
         {
             try
             {
@@ -222,7 +325,10 @@ namespace LSC_UnitTest
             {
                 InsertRow();
 
-                auto rowsDeleted = LSC_TableDeleteRows(TestTable, { .columns = {{ .name = "test_column1", .value = "test;value1" }} });
+                auto rowsDeleted = LSC_TableDeleteRows(
+                    TestTable,
+                    { .columns = {{ .name = "test_column1", .value = "test;value1" }} }
+                );
 
                 Assert::AreEqual(3, rowsDeleted);
             }
@@ -280,24 +386,30 @@ namespace LSC_UnitTest
 
                 auto rows = LSC_TableGetRows({ .table = TestTable });
 
-                Assert::AreEqual(3, (int)rows.size());
+                Assert::AreEqual(TotalRowCount, (int)rows.size());
 
                 Assert::AreEqual("test;value1",  rows[0]["test_column1"].c_str());
                 Assert::AreEqual("test;value2A", rows[1]["test_column2"].c_str());
+                Assert::AreEqual("151",          rows[2]["test_column_integer"].c_str());
+                Assert::AreEqual("",             rows[3]["test_column_float"].c_str());
 
                 rows = LSC_TableGetRows({ .table = TestTable, .orderByColumns = {{ .name = "test_column_integer" }} });
 
-                Assert::AreEqual(3, (int)rows.size());
+                Assert::AreEqual(TotalRowCount, (int)rows.size());
 
-                Assert::AreEqual("1",  rows[0]["test_column_integer"].c_str());
-                Assert::AreEqual("15", rows[1]["test_column_integer"].c_str());
+                Assert::AreEqual("",    rows[0]["test_column_integer"].c_str());
+                Assert::AreEqual("1",   rows[1]["test_column_integer"].c_str());
+                Assert::AreEqual("15",  rows[2]["test_column_integer"].c_str());
+                Assert::AreEqual("151", rows[3]["test_column_integer"].c_str());
 
                 rows = LSC_TableGetRows({ .table = TestTable, .orderByColumns = {{ .name = "test_column_float" }} });
 
-                Assert::AreEqual(3, (int)rows.size());
+                Assert::AreEqual(TotalRowCount, (int)rows.size());
 
-                Assert::AreEqual("1.5",  rows[0]["test_column_float"].c_str());
-                Assert::AreEqual("15.1", rows[1]["test_column_float"].c_str());
+                Assert::AreEqual("",      rows[0]["test_column_float"].c_str());
+                Assert::AreEqual("1.5",   rows[1]["test_column_float"].c_str());
+                Assert::AreEqual("15.1",  rows[2]["test_column_float"].c_str());
+                Assert::AreEqual("151.1", rows[3]["test_column_float"].c_str());
             }
             catch (const std::exception& e)
             {
@@ -340,8 +452,8 @@ namespace LSC_UnitTest
                 InsertRow();
 
                 LSC_Query query = {
-                    .table          = TestTable,
-                    .selectColumns  = { "test_column2" },
+                    .table = TestTable,
+                    .selectColumns = { "test_column2" },
                     .whereCondition = {
                         .columns = {{ .name = "test_column2", .value = "value", .comparison = LSC_COMPARISON_CONTAINS }}
                     },
@@ -350,11 +462,12 @@ namespace LSC_UnitTest
 
                 auto rows = LSC_TableGetRows(query);
 
-                Assert::AreEqual(3, (int)rows.size());
+                Assert::AreEqual(TotalRowCount, (int)rows.size());
 
                 Assert::AreEqual("_test%;%_value_%_2A_", rows[0]["test_column2"].c_str());
                 Assert::AreEqual("test;value2",          rows[1]["test_column2"].c_str());
                 Assert::AreEqual("test;value2A",         rows[2]["test_column2"].c_str());
+                Assert::AreEqual("test;value2C",         rows[3]["test_column2"].c_str());
             }
             catch (const std::exception& e)
             {
@@ -362,7 +475,7 @@ namespace LSC_UnitTest
             }
         }
 
-        TEST_METHOD(GetRowsWhereContainsEscaped)
+        TEST_METHOD(GetRowsWhereContainsSpecialCharacters)
         {
             try
             {
@@ -382,6 +495,62 @@ namespace LSC_UnitTest
                 Assert::AreEqual(1, (int)rows.size());
 
                 Assert::AreEqual("_test%;%_value_%_2A_", rows[0]["test_column2"].c_str());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(GetRowsWhereNull)
+        {
+            try
+            {
+                InsertRow();
+
+                LSC_Query query = {
+                    .table = TestTable,
+                    .whereCondition = {
+                        .columns = {
+                            { .name = "test_column1", .comparison = LSC_COMPARISON_IS_NULL },
+                            { .name = "test_column2", .value = "test;value2C" },
+                            { .name = "test_column_float",   .comparison = LSC_COMPARISON_IS_NULL },
+                            { .name = "test_column_integer", .comparison = LSC_COMPARISON_IS_NULL }
+                        }
+                    }
+                };
+
+                auto rows = LSC_TableGetRows(query);
+
+                Assert::AreEqual(1, (int)rows.size());
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(GetRowsWhereNotNull)
+        {
+            try
+            {
+                InsertRow();
+
+                LSC_Query query = {
+                    .table = TestTable,
+                    .whereCondition = {
+                        .columns = {
+                            { .name = "test_column1", .value = "test;value1" },
+                            { .name = "test_column2", .comparison = LSC_COMPARISON_IS_NOT_NULL },
+                            { .name = "test_column_float",   .comparison = LSC_COMPARISON_IS_NOT_NULL },
+                            { .name = "test_column_integer", .comparison = LSC_COMPARISON_IS_NOT_NULL }
+                        }
+                    }
+                };
+
+                auto rows = LSC_TableGetRows(query);
+
+                Assert::AreEqual(3, (int)rows.size());
             }
             catch (const std::exception& e)
             {
@@ -426,7 +595,7 @@ namespace LSC_UnitTest
 
                 auto tableCount = LSC_TableGetRowCount(TestTable);
 
-                Assert::AreEqual(3, (int)tableCount);
+                Assert::AreEqual(TotalRowCount, (int)tableCount);
 
                 LSC_Query query = {
                     .table          = TestTable,

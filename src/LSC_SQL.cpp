@@ -9,6 +9,9 @@ void LSC_SQL::Bind(const LSC_ColumnValue& column, int position, sqlite3_stmt* st
 	case LSC_DATA_TYPE_INTEGER:
 		sqlite3_bind_int64(statement, position, std::atoll(column.value.c_str()));
 		break;
+	case LSC_DATA_TYPE_NULL:
+		sqlite3_bind_null(statement, position);
+		break;
 	default:
 		sqlite3_bind_text(statement, position, LSC_SQL::getTextValue(column).c_str(), -1, SQLITE_TRANSIENT);
 		break;
@@ -17,15 +20,16 @@ void LSC_SQL::Bind(const LSC_ColumnValue& column, int position, sqlite3_stmt* st
 
 void LSC_SQL::Bind(const LSC_Query& query, sqlite3_stmt* statement)
 {
-	auto searchValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : "");
+	int  position    = 1;
+	auto searchValue = LSC_SQL::getSearchValue(query.search);
 
 	if (!searchValue.empty())
-		sqlite3_bind_text(statement, 1, searchValue.c_str(), -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(statement, position++, searchValue.c_str(), -1, SQLITE_TRANSIENT);
 
-	int position = (!query.search.empty() ? 2 : 1);
-
-	for (int i = 0; i < (int)query.whereCondition.columns.size(); i++)
-		LSC_SQL::Bind(query.whereCondition.columns[i], (position + i), statement);
+	for (const auto& column : query.whereCondition.columns) {
+		if (!LSC_SQL::isNullComparison(column.comparison))
+			LSC_SQL::Bind(column, position++, statement);
+	}
 }
 
 int LSC_SQL::Execute(const std::string& query)
@@ -89,22 +93,34 @@ int LSC_SQL::Finalize(sqlite3_stmt* statement)
 	return result;
 }
 
-std::string LSC_SQL::getComparison(LSC_Comparison comparison)
+std::string LSC_SQL::getComparison(const LSC_ColumnValue& column)
 {
-	switch (comparison) {
-		case LSC_COMPARISON_CONTAINS: return " LIKE ";
-		case LSC_COMPARISON_EQUALS: return "=";
-		case LSC_COMPARISON_NOT_EQUALS: return "<>";
-		case LSC_COMPARISON_IS_NULL: return " IS NULL ";
-		case LSC_COMPARISON_IS_NOT_NULL: return " IS NOT NULL ";
-		case LSC_COMPARISON_GREATER_THAN: return ">";
-		case LSC_COMPARISON_GREATER_THAN_OR_EQUALS: return ">=";
-		case LSC_COMPARISON_LESS_THAN: return "<";
-		case LSC_COMPARISON_LESS_THAN_OR_EQUALS: return "<=";
-		default: break;
+	std::string comparison;
+
+	switch (column.comparison) {
+		case LSC_COMPARISON_CONTAINS: comparison = LSC_SQL::getComparisonContains(column.value); break;
+		case LSC_COMPARISON_EQUALS:       comparison = " = ?"; break;
+		case LSC_COMPARISON_NOT_EQUALS:   comparison = " <> ?"; break;
+		case LSC_COMPARISON_IS_NULL:      comparison = " IS NULL"; break;
+		case LSC_COMPARISON_IS_NOT_NULL:  comparison = " IS NOT NULL"; break;
+		case LSC_COMPARISON_GREATER_THAN: comparison = " > ?"; break;
+		case LSC_COMPARISON_LESS_THAN:    comparison = " < ?"; break;
+		case LSC_COMPARISON_GREATER_THAN_OR_EQUALS: comparison = " >= ?"; break;
+		case LSC_COMPARISON_LESS_THAN_OR_EQUALS:    comparison = " <= ?"; break;
+		default: return "";
 	}
 
-	return "";
+	return std::format("{}{}", column.name, comparison);
+}
+
+std::string LSC_SQL::getComparisonContains(const std::string& value)
+{
+	std::string comparison = " LIKE ?";
+
+	if (std::regex_search(value, std::regex("[%_]")))
+		comparison.append(" ESCAPE '\\'");
+
+	return comparison;
 }
 
 std::string LSC_SQL::getOperation(LSC_Operation operation)
@@ -112,7 +128,6 @@ std::string LSC_SQL::getOperation(LSC_Operation operation)
 	switch (operation) {
 		case LSC_OPERATION_AND: return " AND ";
 		case LSC_OPERATION_OR:  return " OR ";
-		default: break;
 	}
 
 	return "";
@@ -336,6 +351,11 @@ LSC_TableRows LSC_SQL::GetRows(sqlite3_stmt* statement)
 	return rows;
 }
 
+std::string LSC_SQL::getSearchValue(const std::string& searchQuery)
+{
+	return (!searchQuery.empty() ? std::regex_replace(searchQuery, std::regex("(\\S+)"), "$&*") : "");
+}
+
 std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 {
     if (!LSC_SQL::IsValid(query.table))
@@ -457,18 +477,23 @@ std::string LSC_SQL::GetWhereCondition(const LSC_WhereCondition& whereCondition)
 		if (!LSC_SQL::IsValid(column.name))
 			throw std::runtime_error(std::format("Invalid WHERE column name '{}'.", column.name));
 
-		auto comparison = LSC_SQL::getComparison(column.comparison);
+		auto comparison = LSC_SQL::getComparison(column);
 
-		result.append(std::format("{}{}?", column.name, comparison));
+		if (comparison.empty())
+			continue;
 
-		if ((column.comparison == LSC_COMPARISON_CONTAINS) && std::regex_search(column.value, std::regex("[%_]")))
-			result.append(" ESCAPE '\\'");
+		result.append(comparison);
 
 		if (i < (whereCondition.columns.size() - 1))
 			result.append(LSC_SQL::getOperation(whereCondition.operation));
 	}
 
 	return result;
+}
+
+bool LSC_SQL::isNullComparison(LSC_Comparison comparison)
+{
+	return ((comparison == LSC_COMPARISON_IS_NULL) || (comparison == LSC_COMPARISON_IS_NOT_NULL));
 }
 
 // https://cplusplus.com/reference/regex/ECMAScript/

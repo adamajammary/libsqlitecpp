@@ -33,10 +33,13 @@ public:
 	static bool          IsValid(const std::string& value);
 
 private:
-	static std::string  getComparison(LSC_Comparison comparison);
+	static std::string  getComparison(const LSC_ColumnValue& column);
+	static std::string  getComparisonContains(const std::string& value);
 	static std::string  getOperation(LSC_Operation operation);
 	static LSC_TableRow getRow(sqlite3_stmt* statement);
+	static std::string  getSearchValue(const std::string& searchQuery);
 	static std::string  getTextValue(const LSC_ColumnValue& column);
+	static bool         isNullComparison(LSC_Comparison comparison);
 };
 
 #endif
