@@ -10,6 +10,7 @@ private:
 	~LSC_Settings() {}
 
 public:
+	static void        Clear();
 	static std::string Get(const std::string& key);
 	static void        Init();
 	static void        Set(const std::string& key, const std::string& value);

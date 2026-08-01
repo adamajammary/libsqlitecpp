@@ -7,6 +7,11 @@ sqlite3* LSC_GetDBConnection()
     return connection;
 }
 
+void LSC_Clear()
+{
+    LSC_Settings::Clear();
+}
+
 void LSC_CloseDatabase()
 {
     if (connection)

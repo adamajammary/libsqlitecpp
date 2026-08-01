@@ -131,6 +131,12 @@ DLLEXPORT std::string DLL LSC_Get(const std::string& key);
 DLLEXPORT void DLL LSC_Set(const std::string& key, const std::string& value);
 
 /**
+ * Deletes all the rows in the default key/value pair table.
+ * @throws runtime_error
+ */
+DLLEXPORT void DLL LSC_Clear();
+
+/**
  * @brief Table and column names must start with a letter, and may only contain letters, numbers and underscores.
  * @throws runtime_error
  */

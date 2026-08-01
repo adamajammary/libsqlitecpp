@@ -339,6 +339,16 @@ Throws **runtime_error**
 LSC_Set("my_key", "my value");
 ```
 
+### LSC_Clear
+
+```cpp
+void LSC_Clear();
+```
+
+Deletes all the rows in the default key/value pair table.
+
+Throws **runtime_error**
+
 ### LSC_TableCreate
 
 ```cpp

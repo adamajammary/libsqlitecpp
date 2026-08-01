@@ -63,6 +63,29 @@ namespace LSC_UnitTest
                 auto value2 = LSC_Get("test_key");
 
                 Assert::IsTrue(value2.empty());
+
+                Clear();
+
+                auto rowCount = LSC_TableGetRowCount("lsc_settings");
+
+                Assert::AreEqual(0, (int)rowCount);
+
+                value1 = LSC_Get("test;key");
+
+                Assert::IsTrue(value1.empty());
+
+            }
+            catch (const std::exception& e)
+            {
+                Assert::Fail(ToString(e.what()).c_str());
+            }
+        }
+
+        TEST_METHOD(Clear)
+        {
+            try
+            {
+                LSC_Clear();
             }
             catch (const std::exception& e)
             {
