@@ -2,10 +2,11 @@
 
 void LSC_Settings::Clear()
 {
-	auto query = "DELETE FROM lsc_settings;";
-
-	if (LSC_SQL::Execute(query) != SQLITE_OK)
+	if (LSC_SQL::Execute("DELETE FROM lsc_settings;") != SQLITE_OK)
 		throw std::runtime_error("Failed to truncate the settings table.");
+
+	if (LSC_SQL::Execute("VACUUM;") != SQLITE_OK)
+		throw std::runtime_error("Failed to vacuum the database.");
 }
 
 std::string LSC_Settings::Get(const std::string& key)

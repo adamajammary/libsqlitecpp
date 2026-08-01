@@ -225,6 +225,9 @@ void LSC_TableDeleteRows(const std::string& table)
 
     if (LSC_SQL::Execute(query) != SQLITE_OK)
         throw std::runtime_error(std::format("Failed to truncate table '{}'.", table));
+
+    if (LSC_SQL::Execute("VACUUM;") != SQLITE_OK)
+        throw std::runtime_error("Failed to vacuum the database.");
 }
 
 LSC_TableRow LSC_TableGetRow(const std::string& table, int64_t rowId)
