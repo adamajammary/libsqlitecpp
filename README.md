@@ -10,13 +10,13 @@ libsqlitecpp is a free cross-platform SQLite C++ library.
 
 Library | Version | License
 ------- | ------- | -------
-[SQLite](https://www.sqlite.org/) | [3.51.3](https://www.sqlite.org/2026/sqlite-autoconf-3510300.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
+[SQLite](https://www.sqlite.org/) | [3.54.0](https://www.sqlite.org/2026/sqlite-autoconf-3540000.tar.gz) | [Public Domain](https://www.sqlite.org/copyright.html)
 
 ## Platform-dependent Include Headers
 
 Platform | Header | Package
 -------- | ------ | -------
-Windows | windows.h | DllMain
+Windows | windows.h | [DllMain](https://learn.microsoft.com/en-us/windows/win32/dlls/dllmain)
 
 ## Compilers and C++20
 
@@ -172,6 +172,7 @@ std::vector<LSC_TableRow> rows = LSC_TableGetRows(query);
 ```cpp
 enum LSC_Comparison
 {
+  LSC_COMPARISON_CONTAINS,
   LSC_COMPARISON_EQUALS,
   LSC_COMPARISON_NOT_EQUALS,
   LSC_COMPARISON_IS_NULL,
@@ -190,6 +191,7 @@ enum LSC_DataType
 {
   LSC_DATA_TYPE_FLOAT,
   LSC_DATA_TYPE_INTEGER,
+  LSC_DATA_TYPE_NULL,
   LSC_DATA_TYPE_TEXT
 };
 ```
@@ -337,6 +339,16 @@ Throws **runtime_error**
 LSC_Set("my_key", "my value");
 ```
 
+### LSC_Clear
+
+```cpp
+void LSC_Clear();
+```
+
+Deletes all the rows in the default key/value pair table.
+
+Throws **runtime_error**
+
 ### LSC_TableCreate
 
 ```cpp
@@ -356,10 +368,33 @@ columns.push_back({ .name = "my_column2", .isNotNull = true, .isSearchable = tru
 LSC_TableCreate("my_table", columns);
 ```
 
+### LSC_TableCreateIndex
+
+```cpp
+void LSC_TableCreateIndex(const std::string& table, const std::string& index, const std::vector<LSC_ColumnOrderBy>& columns);
+```
+
+Table, index and column names must start with a letter, and may only contain letters, numbers and underscores.
+
+Throws **runtime_error**
+
+```cpp
+LSC_TableCreateIndex("my_table", "my_index_col1_asc",  {{ .name = "my_column1" }});
+LSC_TableCreateIndex("my_table", "my_index_col2_desc", {{ .name = "my_column2", .isDescending = true  }});
+```
+
 ### LSC_TableDelete
 
 ```cpp
 void LSC_TableDelete(const std::string& table);
+```
+
+Throws **runtime_error**
+
+### LSC_TableDeleteIndex
+
+```cpp
+void LSC_TableDeleteIndex(const std::string& index);
 ```
 
 Throws **runtime_error**

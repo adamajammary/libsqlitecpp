@@ -9,23 +9,27 @@ void LSC_SQL::Bind(const LSC_ColumnValue& column, int position, sqlite3_stmt* st
 	case LSC_DATA_TYPE_INTEGER:
 		sqlite3_bind_int64(statement, position, std::atoll(column.value.c_str()));
 		break;
+	case LSC_DATA_TYPE_NULL:
+		sqlite3_bind_null(statement, position);
+		break;
 	default:
-		sqlite3_bind_text(statement, position, column.value.c_str(), -1, nullptr);
+		sqlite3_bind_text(statement, position, LSC_SQL::getTextValue(column).c_str(), -1, SQLITE_TRANSIENT);
 		break;
 	}
 }
 
 void LSC_SQL::Bind(const LSC_Query& query, sqlite3_stmt* statement)
 {
-	auto searchValue = (!query.search.empty() ? std::regex_replace(query.search, std::regex("(\\S+)"), "$&*") : "");
+	int  position    = 1;
+	auto searchValue = LSC_SQL::getSearchValue(query.search);
 
 	if (!searchValue.empty())
-		sqlite3_bind_text(statement, 1, searchValue.c_str(), -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(statement, position++, searchValue.c_str(), -1, SQLITE_TRANSIENT);
 
-	int position = (!query.search.empty() ? 2 : 1);
-
-	for (int i = 0; i < (int)query.whereCondition.columns.size(); i++)
-		LSC_SQL::Bind(query.whereCondition.columns[i], (position + i), statement);
+	for (const auto& column : query.whereCondition.columns) {
+		if (!LSC_SQL::isNullComparison(column.comparison))
+			LSC_SQL::Bind(column, position++, statement);
+	}
 }
 
 int LSC_SQL::Execute(const std::string& query)
@@ -89,21 +93,34 @@ int LSC_SQL::Finalize(sqlite3_stmt* statement)
 	return result;
 }
 
-std::string LSC_SQL::getComparison(LSC_Comparison comparison)
+std::string LSC_SQL::getComparison(const LSC_ColumnValue& column)
 {
-	switch (comparison) {
-		case LSC_COMPARISON_EQUALS: return "=";
-		case LSC_COMPARISON_NOT_EQUALS: return "<>";
-		case LSC_COMPARISON_IS_NULL: return " IS NULL ";
-		case LSC_COMPARISON_IS_NOT_NULL: return " IS NOT NULL ";
-		case LSC_COMPARISON_GREATER_THAN: return ">";
-		case LSC_COMPARISON_GREATER_THAN_OR_EQUALS: return ">=";
-		case LSC_COMPARISON_LESS_THAN: return "<";
-		case LSC_COMPARISON_LESS_THAN_OR_EQUALS: return "<=";
-		default: break;
+	std::string comparison;
+
+	switch (column.comparison) {
+		case LSC_COMPARISON_CONTAINS: comparison = LSC_SQL::getComparisonContains(column.value); break;
+		case LSC_COMPARISON_EQUALS:       comparison = " = ?"; break;
+		case LSC_COMPARISON_NOT_EQUALS:   comparison = " <> ?"; break;
+		case LSC_COMPARISON_IS_NULL:      comparison = " IS NULL"; break;
+		case LSC_COMPARISON_IS_NOT_NULL:  comparison = " IS NOT NULL"; break;
+		case LSC_COMPARISON_GREATER_THAN: comparison = " > ?"; break;
+		case LSC_COMPARISON_LESS_THAN:    comparison = " < ?"; break;
+		case LSC_COMPARISON_GREATER_THAN_OR_EQUALS: comparison = " >= ?"; break;
+		case LSC_COMPARISON_LESS_THAN_OR_EQUALS:    comparison = " <= ?"; break;
+		default: return "";
 	}
 
-	return "";
+	return std::format("{}{}", column.name, comparison);
+}
+
+std::string LSC_SQL::getComparisonContains(const std::string& value)
+{
+	std::string comparison = " LIKE ?";
+
+	if (std::regex_search(value, std::regex("[%_]")))
+		comparison.append(" ESCAPE '\\'");
+
+	return comparison;
 }
 
 std::string LSC_SQL::getOperation(LSC_Operation operation)
@@ -111,7 +128,6 @@ std::string LSC_SQL::getOperation(LSC_Operation operation)
 	switch (operation) {
 		case LSC_OPERATION_AND: return " AND ";
 		case LSC_OPERATION_OR:  return " OR ";
-		default: break;
 	}
 
 	return "";
@@ -140,13 +156,13 @@ sqlite3_stmt* LSC_SQL::GetPreparedStatement(const std::string& query)
 
 std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE VIRTUAL TABLE IF NOT EXISTS %s_fts USING FTS5 (content=%s, content_rowid=id",
-		table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE VIRTUAL TABLE IF NOT EXISTS {}_fts USING FTS5 (content={}, content_rowid=id",
+		table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(");");
 
@@ -155,18 +171,18 @@ std::string LSC_SQL::GetQueryFTS(const std::string& table, const std::vector<LSC
 
 std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE TRIGGER IF NOT EXISTS %s_fts_delete AFTER DELETE ON %s BEGIN INSERT INTO %s_fts (%s_fts, rowid",
-		table.c_str(), table.c_str(), table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE TRIGGER IF NOT EXISTS {}_fts_delete AFTER DELETE ON {} BEGIN INSERT INTO {}_fts ({}_fts, rowid",
+		table, table, table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES ('delete', OLD.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", OLD.%s", column.name.c_str()));
+		query.append(std::format(", OLD.{}", column.name));
 
 	query.append("); END;");
 
@@ -175,18 +191,18 @@ std::string LSC_SQL::GetQueryTriggerDelete(const std::string& table, const std::
 
 std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE TRIGGER IF NOT EXISTS %s_fts_insert AFTER INSERT ON %s BEGIN INSERT INTO %s_fts (rowid",
-		table.c_str(), table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE TRIGGER IF NOT EXISTS {}_fts_insert AFTER INSERT ON {} BEGIN INSERT INTO {}_fts (rowid",
+		table, table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES (NEW.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", NEW.%s", column.name.c_str()));
+		query.append(std::format(", NEW.{}", column.name));
 
 	query.append("); END;");
 
@@ -195,28 +211,28 @@ std::string LSC_SQL::GetQueryTriggerInsert(const std::string& table, const std::
 
 std::string LSC_SQL::GetQueryTriggerUpdate(const std::string& table, const std::vector<LSC_ColumnDefinition>& columns)
 {
-	auto query = TextFormat(
-		"CREATE TRIGGER IF NOT EXISTS %s_fts_update AFTER UPDATE ON %s BEGIN INSERT INTO %s_fts (%s_fts, rowid",
-		table.c_str(), table.c_str(), table.c_str(), table.c_str()
+	auto query = std::format(
+		"CREATE TRIGGER IF NOT EXISTS {}_fts_update AFTER UPDATE ON {} BEGIN INSERT INTO {}_fts ({}_fts, rowid",
+		table, table, table, table
 	);
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES ('delete', OLD.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", OLD.%s", column.name.c_str()));
+		query.append(std::format(", OLD.{}", column.name));
 
-	query.append(TextFormat("); INSERT INTO %s_fts (rowid", table.c_str()));
+	query.append(std::format("); INSERT INTO {}_fts (rowid", table));
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", %s", column.name.c_str()));
+		query.append(std::format(", {}", column.name));
 
 	query.append(") VALUES (NEW.id");
 
 	for (const auto& column : columns)
-		query.append(TextFormat(", NEW.%s", column.name.c_str()));
+		query.append(std::format(", NEW.{}", column.name));
 
 	query.append("); END;");
 
@@ -335,17 +351,22 @@ LSC_TableRows LSC_SQL::GetRows(sqlite3_stmt* statement)
 	return rows;
 }
 
+std::string LSC_SQL::getSearchValue(const std::string& searchQuery)
+{
+	return (!searchQuery.empty() ? std::regex_replace(searchQuery, std::regex("(\\S+)"), "$&*") : "");
+}
+
 std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 {
     if (!LSC_SQL::IsValid(query.table))
-        throw std::runtime_error(TextFormat("Invalid table name '%s'.", query.table.c_str()));
+        throw std::runtime_error(std::format("Invalid table name '{}'.", query.table));
 
     std::string columns = "";
 
     for (size_t i = 0; i < query.selectColumns.size(); i++)
     {
         if (!LSC_SQL::IsValid(query.selectColumns[i]))
-            throw std::runtime_error(TextFormat("Invalid SELECT column name '%s'.", query.selectColumns[i].c_str()));
+            throw std::runtime_error(std::format("Invalid SELECT column name '{}'.", query.selectColumns[i]));
 
         if (!query.search.empty() && (query.selectColumns[i] == "id"))
 			columns.append("rowid");
@@ -365,11 +386,11 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	std::string whereClause = "";
 
 	if (!query.search.empty() && hasWhere)
-		whereClause = TextFormat(" WHERE %s_fts MATCH ? AND %s", query.table.c_str(), whereCondition.c_str());
+		whereClause = std::format(" WHERE {}_fts MATCH ? AND {}", query.table, whereCondition);
     else if (!query.search.empty())
-		whereClause = TextFormat(" WHERE %s_fts MATCH ?", query.table.c_str());
+		whereClause = std::format(" WHERE {}_fts MATCH ?", query.table);
     else if (hasWhere)
-		whereClause = TextFormat(" WHERE %s", whereCondition.c_str());
+		whereClause = std::format(" WHERE {}", whereCondition);
 
 	bool hasOrderBy = !query.orderByColumns.empty();
 
@@ -382,9 +403,9 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 		for (size_t i = 0; i < query.orderByColumns.size(); i++)
 		{
 			if (!LSC_SQL::IsValid(query.orderByColumns[i].name))
-				throw std::runtime_error(TextFormat("Invalid ORDER BY column name '%s'.", query.orderByColumns[i].name.c_str()));
+				throw std::runtime_error(std::format("Invalid ORDER BY column name '{}'.", query.orderByColumns[i].name));
 
-			orderBy.append(TextFormat("%s %s", query.orderByColumns[i].name.c_str(), (query.orderByColumns[i].isDescending ? "DESC" : "ASC")));
+			orderBy.append(std::format("{} {}", query.orderByColumns[i].name, (query.orderByColumns[i].isDescending ? "DESC" : "ASC")));
 
 			if (i < (query.orderByColumns.size() - 1))
 				orderBy.append(", ");
@@ -392,16 +413,29 @@ std::string LSC_SQL::GetSelect(const LSC_Query& query, bool noLimit)
 	}
 
 	auto distinct = (query.isDistinct ? "DISTINCT " : "");
-    auto table    = (!query.search.empty() ? TextFormat("%s_fts", query.table.c_str()) : query.table);
+    auto table    = (!query.search.empty() ? std::format("{}_fts", query.table) : query.table);
 
 	std::string select;
 
 	if (noLimit)
-		select = TextFormat("SELECT %s%s FROM %s%s%s", distinct, columns.c_str(), table.c_str(), whereClause.c_str(), orderBy.c_str());
+		select = std::format("SELECT {}{} FROM {}{}{}", distinct, columns, table, whereClause, orderBy);
 	else
-		select = TextFormat("SELECT %s%s FROM %s%s%s LIMIT %d OFFSET %d;", distinct, columns.c_str(), table.c_str(), whereClause.c_str(), orderBy.c_str(), query.limit, query.offset);
+		select = std::format("SELECT {}{} FROM {}{}{} LIMIT {} OFFSET {};", distinct, columns, table, whereClause, orderBy, query.limit, query.offset);
 
 	return select;
+}
+
+std::string LSC_SQL::getTextValue(const LSC_ColumnValue& column)
+{
+	if (column.comparison != LSC_COMPARISON_CONTAINS)
+		return column.value;
+
+	auto specialCharacters = std::regex("[%_]");
+
+	if (std::regex_search(column.value, specialCharacters))
+		return std::format("%{}%", std::regex_replace(column.value, specialCharacters, "\\$&"));
+
+	return std::format("%{}%", column.value);
 }
 
 std::string LSC_SQL::GetValue(sqlite3_stmt* statement)
@@ -438,18 +472,28 @@ std::string LSC_SQL::GetWhereCondition(const LSC_WhereCondition& whereCondition)
 
 	for (size_t i = 0; i < whereCondition.columns.size(); i++)
 	{
-		if (!LSC_SQL::IsValid(whereCondition.columns[i].name))
-			throw std::runtime_error(TextFormat("Invalid WHERE column name '%s'.", whereCondition.columns[i].name.c_str()));
+		const auto& column = whereCondition.columns[i];
 
-		auto comparison = LSC_SQL::getComparison(whereCondition.columns[i].comparison);
+		if (!LSC_SQL::IsValid(column.name))
+			throw std::runtime_error(std::format("Invalid WHERE column name '{}'.", column.name));
 
-		result.append(TextFormat("%s%s?", whereCondition.columns[i].name.c_str(), comparison.c_str()));
+		auto comparison = LSC_SQL::getComparison(column);
+
+		if (comparison.empty())
+			continue;
+
+		result.append(comparison);
 
 		if (i < (whereCondition.columns.size() - 1))
 			result.append(LSC_SQL::getOperation(whereCondition.operation));
 	}
 
 	return result;
+}
+
+bool LSC_SQL::isNullComparison(LSC_Comparison comparison)
+{
+	return ((comparison == LSC_COMPARISON_IS_NULL) || (comparison == LSC_COMPARISON_IS_NOT_NULL));
 }
 
 // https://cplusplus.com/reference/regex/ECMAScript/
